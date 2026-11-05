@@ -6,7 +6,7 @@ from app.packs.zh.pinyin import numeric_to_marks
 
 @pytest.mark.parametrize("num,mark", [
     ("hao3", "hǎo"), ("lv4", "lǜ"), ("le5", "le"), ("gou3", "gǒu"), ("gui4", "guì"),
-    ("xiong2", "xióng"), ("Bei3", "Běi"), ("er2", "ér"), ("liu2", "liú"),
+    ("xiong2", "xióng"), ("Bei3", "Běi"), ("er2", "ér"), ("liu2", "liú"), ("lü3", "lǚ"), ("nv3", "nǚ"),
 ])
 def test_tone_marks(num, mark):
     assert numeric_to_marks(num) == mark

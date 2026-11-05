@@ -8,6 +8,13 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 
 ### Phase 1 PWA (in progress)
 
+- [x] Sound bootcamp (Sounds tab): the four tones with pitch-contour diagrams and English-speaker cues, then
+      initials and finals that aren't English (aspiration, j/q/x, zh/ch/sh/r, z/c/s, ü, -n/-ng). Drills:
+      which tone, tone pairs on HSK words (answered as spoken, after sandhi), tone changes (3-3, 不, 一), and
+      14 minimal-pair contrasts. Weak tones and contrasts come up more, and a drill counts as mastered at
+      85% over your last 20. "Say it" records you and draws your pitch against the target tone, with a
+      tone guess as a hint (YIN pitch tracking in the browser; the microphone needs HTTPS)
+
 - [x] Handwriting track: Review → Writing is its own daily session (separate caps: 5 new, 40 total). You write
       from memory on a 田字格 grid with Hanzi Writer; mistakes map to a suggested rating (0 Good, 1–2 Hard,
       3+, a hint or giving up Again) that you confirm. Apple Pencil palm rejection is on: in Pencil-only mode
@@ -59,7 +66,7 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 - [x] Mining requires a context sentence or text; placement bulk-marking by HSK level
 - [x] Progress: known words and characters, cumulative HSK coverage, characters read
 
-Next: the nightly FSRS optimizer, then SUBTLEX-CH and Tatoeba imports, g2pM for polyphones, and the sound bootcamp.
+Next: the nightly FSRS optimizer, SUBTLEX-CH and Tatoeba imports, g2pM for polyphones, and server-side TTS.
 
 ## Run it
 
@@ -86,6 +93,11 @@ To generate texts, open Progress → Text generation → Sign in with ChatGPT. A
 opens. That tab then fails to load an `http://127.0.0.1:1455/callback?...` address, which is expected: copy that
 address and paste it back into bhasha. OpenAI calls Sign in with ChatGPT a preview, and usage counts toward your
 plan's limits.
+
+**Recorded voices (optional):** the Sounds tab uses your device's Mandarin voice until you add Tone Perfect
+(Michigan State University, open access; cite it if you share work that uses it). Download it from
+https://tone.lib.msu.edu, unpack the MP3s anywhere under `data/toneperfect/` (files are named like
+`ma3_FV1_MP3.mp3`), then run `./ops/import-data.sh`. Drills then play six different speakers at random.
 
 There are no native apps: the PWA is the app on iPhone, iPad and Mac. To install it on iPhone, iPad or Mac (Share, then Add to Home Screen / Add to Dock), serve it over
 HTTPS through Traefik. Browsers only enable the service worker and offline caching in a secure

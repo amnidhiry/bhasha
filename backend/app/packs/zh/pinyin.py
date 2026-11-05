@@ -33,7 +33,7 @@ _NUMERAL_CHARS = set("零〇一二三四五六七八九十百千万亿两")
 
 def numeric_to_marks(syllable: str) -> str:
     """'hao3' -> 'hǎo', 'lv4' -> 'lǜ', 'le5' -> 'le'. Non-pinyin passes through."""
-    m = _SYLLABLE_RE.match(syllable)
+    m = _SYLLABLE_RE.match(syllable.replace("ü", "v").replace("Ü", "V"))
     if not m:
         return syllable
     body, tone = m.group(1).replace("u:", "v"), int(m.group(2))

@@ -271,3 +271,29 @@ class CharacterStrokes(Base):
     character: Mapped[str] = mapped_column(String(8), primary_key=True)
     strokes: Mapped[list] = mapped_column(JSONType)
     medians: Mapped[list] = mapped_column(JSONType)
+
+
+class DrillAttempt(Base):
+    """One answer in a sound-bootcamp drill. Accuracy per drill (and per tone or
+    contrast) decides what comes up more often and when a drill counts as mastered."""
+
+    __tablename__ = "drill_attempt"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    drill: Mapped[str] = mapped_column(String(48))  # tone | pair | sandhi | contrast:<id>
+    item: Mapped[str] = mapped_column(String(64))   # e.g. "ma3", "你好", "zhi1|ji1"
+    answer: Mapped[str] = mapped_column(String(32))
+    correct: Mapped[bool] = mapped_column(Boolean)
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    __table_args__ = (Index("ix_drill_user_drill_at", "user_id", "drill", "at"),)
+
+
+class AudioSyllable(Base):
+    """Recorded syllables (Tone Perfect, MSU): one row per syllable, tone and speaker."""
+
+    __tablename__ = "audio_syllable"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(16), index=True)  # "ma3", "lv4"
+    speaker: Mapped[str] = mapped_column(String(16))
+    path: Mapped[str] = mapped_column(String(512))  # relative to BHASHA_AUDIO_DIR
+    __table_args__ = (UniqueConstraint("key", "speaker"),)

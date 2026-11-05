@@ -19,4 +19,6 @@ run app.importers.hanzi /data/makemeahanzi-dictionary.txt
 run app.importers.cedict /data/cedict.txt
 run app.importers.hanzi_graphics /data/makemeahanzi-graphics.txt
 run app.importers.handwriting /data/hsk-handwriting
+# Optional: Tone Perfect recordings, downloaded by hand into data/toneperfect (see README).
+if [ -d data/toneperfect ]; then run app.importers.toneperfect /data/toneperfect; fi
 docker compose restart api   # reload the segmenter dictionary

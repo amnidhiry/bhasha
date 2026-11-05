@@ -409,7 +409,7 @@ The medical track starts only after the core reaches HSK 3 to 4, and a second la
 - [x] FSRS-6 scheduler with meaning, reading and listening cards; review sync endpoint
 - [x] PWA: review screen, reader with word-status colors and tap lookup, one-tap mining
 - [x] Generator with coverage validation and repair loop, behind the LLM gateway with a daily call cap
-- [ ] Sound bootcamp: pinyin lessons, Tone Perfect drills, English-speaker minimal pairs
+- [x] Sound bootcamp: pinyin lessons, tone and tone-pair drills (Tone Perfect when imported, device voice otherwise), English-speaker minimal pairs, sandhi drill, and Say-it pitch contours
 - [x] Progress page: known words and characters, HSK coverage
 - [x] Handwriting track (pulled forward): official HSK 3.0 list, Hanzi Writer with Apple Pencil palm rejection, its own daily session
 

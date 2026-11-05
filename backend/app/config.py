@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     # Loopback redirect for "Sign in with ChatGPT". Nothing needs to listen there:
     # you paste the address the browser lands on back into the app.
     chatgpt_redirect_port: int = 1455
+    # Recorded audio (Tone Perfect) lives here; see ops/import-data.sh.
+    audio_dir: str = "/data/toneperfect"
     # Run queued jobs inside the API process (dev without a worker container).
     inline_jobs: bool = False
     chatgpt_auth_url: str = "https://auth.openai.com"

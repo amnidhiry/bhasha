@@ -20,8 +20,8 @@ _LINE = re.compile(r"^(\S+)\s+(\S+)\s+\[([^\]]*)\]\s+/(.*)/\s*$")
 
 
 def normalize_pinyin(p: str) -> str:
-    """'Bei3 jing1' -> 'bei3 jing1'; 'lu:4' -> 'lv4'; bare 'r' / 'xx' kept, neutral 5 kept."""
-    return " ".join(s.lower().replace("u:", "v") for s in p.split())
+    """'Bei3 jing1' -> 'bei3 jing1'; 'lu:4' and 'lü4' -> 'lv4'; bare 'r' / 'xx' kept, neutral 5 kept."""
+    return " ".join(s.lower().replace("u:", "v").replace("ü", "v") for s in p.split())
 
 
 def parse(lines: Iterable[str]) -> Iterator[tuple[str, str, str, list[str]]]:

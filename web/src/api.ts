@@ -146,6 +146,27 @@ export interface HandwritingOverview {
   cards: number;
 }
 
+export interface DrillItem {
+  drill: string;
+  item: string;
+  prompt: string;
+  audio: import("./audio").AudioSpec;
+  options: { value: string; label: string; audio?: import("./audio").AudioSpec }[] | null;
+  answer: string;
+  reveal: string;
+}
+
+export interface Bootcamp {
+  tones: { tone: number; name: string; chao: number[]; mark: string; how: string; english: string; pitfall: string }[];
+  tone_examples: { key: string; label: string; char: string }[];
+  initial_groups: { id: string; initials: string[]; examples: string[]; tip: string; audio: { key: string; label: string; char: string }[] }[];
+  final_notes: { id: string; title: string; body: string }[];
+  drills: { id: string; title: string; about: string; group?: string; attempts: number; accuracy: number | null; mastered: boolean }[];
+  tone_accuracy: Record<string, number | null>;
+  recorded_audio: boolean;
+  mastery: { window: number; accuracy: number };
+}
+
 export interface Progress {
   known_words: number;
   known_characters: number;
@@ -224,4 +245,7 @@ export const api = {
   sync: (reviews: unknown[]) =>
     post<{ applied: string[]; duplicates: string[]; replayed_cards: number[] }>("/reviews", reviews),
   progress: () => req<Progress>("/progress"),
+  bootcamp: () => req<Bootcamp>("/bootcamp"),
+  drill: (drill: string, n = 10) => req<DrillItem[]>(`/bootcamp/drill?drill=${encodeURIComponent(drill)}&n=${n}`),
+  drillAttempt: (a: { drill: string; item: string; answer: string; correct: boolean }) => post<Bootcamp>("/bootcamp/attempts", [a]),
 };
