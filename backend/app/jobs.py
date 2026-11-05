@@ -120,6 +120,24 @@ def _tone_check(db: Session, job: Job) -> dict:
     return {"voices": len(voices)}
 
 
+def _journal(db: Session, job: Job) -> dict:
+    from app.journal import correct
+    from app.models import JournalEntry
+
+    entry = db.get(JournalEntry, job.params["entry_id"])
+    if entry is None:
+        return {"errors": 0}
+    try:
+        items = correct(db, entry)
+    except Exception as e:
+        db.rollback()
+        entry = db.get(JournalEntry, job.params["entry_id"])
+        entry.status, entry.error = "failed", str(e) if isinstance(e, LlmError) else "Correction failed."
+        db.commit()
+        raise
+    return {"entry_id": entry.id, "errors": len(items)}
+
+
 RENDER_SPEED = 0.85  # the speed the PWA asks for when playing sentences and words
 
 
@@ -132,6 +150,7 @@ def enqueue_render(db: Session, user_id: int, text_id: int) -> None:
 
 HANDLERS: dict[str, Callable[[Session, Job], dict]] = {
     "generate": _generate, "fsrs_fit": _fsrs_fit, "render_text": _render_text, "tone_check": _tone_check,
+    "journal": _journal,
 }
 
 

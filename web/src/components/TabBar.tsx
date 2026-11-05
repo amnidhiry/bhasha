@@ -3,6 +3,7 @@ import type { Route } from "../router";
 const tabs = [
   { name: "library", href: "#/", label: "Read", glyph: "读" },
   { name: "review", href: "#/review", label: "Review", glyph: "复" },
+  { name: "journal", href: "#/journal", label: "Write", glyph: "写" },
   { name: "sounds", href: "#/sounds", label: "Sounds", glyph: "音" },
   { name: "progress", href: "#/progress", label: "Progress", glyph: "进" },
 ] as const;

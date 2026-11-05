@@ -142,6 +142,9 @@ class Card(Base):
     lapses: Mapped[int] = mapped_column(Integer, default=0)
     context_sentence: Mapped[str | None] = mapped_column(Text)
     source_text_id: Mapped[int | None] = mapped_column(ForeignKey("text.id", ondelete="SET NULL"))
+    # Cloze cards from journal mistakes (facet "cloze:<error id>"): the corrected
+    # sentence, the span to blank, what you wrote, and the one-line explanation.
+    cloze: Mapped[dict | None] = mapped_column(JSONType)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     unit: Mapped[Unit] = relationship(lazy="joined")
@@ -378,3 +381,36 @@ class AppSetting(Base):
     __tablename__ = "app_setting"
     key: Mapped[str] = mapped_column(String(64), primary_key=True)
     value: Mapped[dict] = mapped_column(JSONType, default=dict)
+
+
+class JournalEntry(Base):
+    """Something you wrote, and the model's correction of it."""
+
+    __tablename__ = "journal_entry"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"), index=True)
+    text: Mapped[str] = mapped_column(SAText)
+    prompt: Mapped[dict] = mapped_column(JSONType, default=dict)  # suggested words and idea
+    status: Mapped[str] = mapped_column(String(16), default="queued")  # queued | done | failed
+    corrected: Mapped[str | None] = mapped_column(SAText)
+    sentences: Mapped[list] = mapped_column(JSONType, default=list)  # [{original, corrected, english}]
+    comment: Mapped[str | None] = mapped_column(SAText)
+    error: Mapped[str | None] = mapped_column(SAText)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class ErrorItem(Base):
+    """One mistake in a journal entry, categorized and linked to the unit it's about."""
+
+    __tablename__ = "error_item"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entry_id: Mapped[int] = mapped_column(ForeignKey("journal_entry.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"), index=True)
+    category: Mapped[str] = mapped_column(String(32))
+    wrong: Mapped[str] = mapped_column(String(128))
+    right: Mapped[str] = mapped_column(String(128))
+    explanation: Mapped[str] = mapped_column(SAText)
+    sentence_index: Mapped[int] = mapped_column(Integer)
+    unit_id: Mapped[int | None] = mapped_column(ForeignKey("unit.id", ondelete="SET NULL"))
+    card_id: Mapped[int | None] = mapped_column(ForeignKey("card.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

@@ -8,6 +8,12 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 
 ### Phase 1 PWA (in progress)
 
+- [x] Journal (Write tab): write a few sentences with a daily idea and your recent words; the model corrects them in
+      the background with a minimal fix, English and one-line explanations per mistake. Each mistake is checked
+      against your text before it counts, then becomes a fill-in (cloze) review card from your corrected sentence.
+      A character diff shows what changed, and mistakes are counted by category (了/过/着, measure words, word
+      order...)
+
 - [x] Server-side speech: a separate speech service (`speech/`, Kokoro, CPU container on the homelab) that bhasha
       calls over HTTP. Every clip is cached on the homelab; new texts are pre-rendered sentence by sentence in the
       worker; the PWA falls back to the device voice when no host answers. Several hosts can be listed in order,

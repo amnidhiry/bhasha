@@ -63,6 +63,7 @@ class DueCard(BaseModel):
     leech: bool
     retrievability: float
     fsrs: FsrsState
+    cloze: dict | None = None
 
 
 class SchedulerParams(BaseModel):
@@ -144,6 +145,7 @@ def due(limit: int = 50, mode: str = "words", db: Session = Depends(get_db), use
             meanings=meanings_for(db, c.unit), classifiers=(c.unit.extra or {}).get("classifiers", []),
             context_sentence=c.context_sentence, due=_aware(c.due), is_new=is_new, leech=is_leech(c),
             retrievability=retrievability(c, now, sched),
+            cloze=c.cloze,
             fsrs=FsrsState(state=c.state, step=c.step, stability=c.stability, difficulty=c.difficulty,
                            due=_aware(c.due), last_review=_aware(c.last_review), lapses=c.lapses),
         ))

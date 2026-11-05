@@ -483,3 +483,25 @@ details.sub summary { font-weight: 550; color: var(--ink-2); font-size: 0.9rem; 
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); flex: none; }
 .dot.on { background: var(--ok); }
 .link-btn.inline { display: inline; padding: 0 4px; font-weight: 500; }
+
+/* Journal */
+.jr-prompt { display: grid; gap: 6px; }
+.jr-prompt p { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.jr-list { list-style: none; padding: 0; margin: 0; }
+.jr-entry p { margin: 4px 0; }
+.jr-text, .jr-diff, .jr-ok { font: 1.15rem/1.8 var(--serif-zh); }
+.jr-sentence { padding: 8px 0; border-top: 1px solid var(--rule); }
+.jr-sentence:first-of-type { border-top: 0; }
+.d-del { color: var(--accent); text-decoration: line-through; text-decoration-thickness: 2px; }
+.d-ins { color: var(--ok); background: color-mix(in srgb, var(--ok) 12%, transparent); border-radius: 3px; padding: 0 1px; }
+.jr-error { line-height: 1.6; }
+.jr-error s { color: var(--accent); }
+.jr-comment { margin-top: 10px !important; padding: 10px 12px; background: var(--paper); border-radius: 10px; }
+.spinner.inline { display: inline-block; width: 12px; height: 12px; vertical-align: -1px; }
+.tabbar a { flex-basis: 110px; }
+/* Cloze cards */
+.rv-cloze { font: 1.5rem/1.9 var(--serif-zh); margin: 6px 0 0; }
+.rv-cloze .blank { display: inline-block; min-width: 2.2em; border-bottom: 2px solid var(--accent); }
+.rv-cloze .filled { color: var(--ok); border-bottom: 2px solid var(--ok); }
+
+.form-foot .btn { white-space: nowrap; flex: none; }

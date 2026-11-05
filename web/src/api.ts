@@ -150,6 +150,7 @@ export interface DueCard {
   leech: boolean;
   retrievability: number;
   fsrs: FsrsState;
+  cloze?: { sentence: string; answer: string; wrong: string; category: string; explanation: string; english: string } | null;
 }
 
 export interface HandwritingOverview {
@@ -217,6 +218,20 @@ export interface SpeechStatus {
   voice: string | null;
   voices: string[];
   tone_check: Record<string, ToneCheck>;
+}
+
+export interface JournalEntry {
+  id: number;
+  text: string;
+  status: "queued" | "done" | "failed";
+  corrected: string | null;
+  comment: string | null;
+  error: string | null;
+  prompt: { words?: string[]; idea?: string };
+  created_at: string;
+  sentences: { original: string; corrected: string; english: string }[];
+  errors: { id: number; category: string; label: string; wrong: string; right: string; explanation: string;
+    sentence_index: number; card_id: number | null }[];
 }
 
 export interface Progress {
@@ -298,6 +313,11 @@ export const api = {
     post<{ applied: string[]; duplicates: string[]; replayed_cards: number[] }>("/reviews", reviews),
   progress: () => req<Progress>("/progress"),
   fsrs: () => req<FsrsStatus>("/fsrs"),
+  journalPrompt: () => req<{ words: string[]; idea: string }>("/journal/prompt"),
+  journal: () => req<{ entries: JournalEntry[]; categories: Record<string, number>; labels: Record<string, string> }>("/journal"),
+  journalEntry: (id: number) => req<JournalEntry>(`/journal/${id}`),
+  journalWrite: (text: string, prompt: object) => post<JournalEntry>("/journal", { text, prompt }),
+  journalRetry: (id: number) => post<JournalEntry>(`/journal/${id}/retry`, {}),
   speech: () => req<SpeechStatus>("/speech"),
   speechVoice: (voice: string) => req<SpeechStatus>("/speech/voice", { method: "PUT", body: JSON.stringify({ voice }) }),
   toneCheck: (voices: string[] = []) => post<{ job_id: number }>("/speech/tone-check", { voices }),

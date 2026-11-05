@@ -10,6 +10,7 @@ import { Progress } from "./views/Progress";
 import { Reader } from "./views/Reader";
 import { Review } from "./views/Review";
 import { Drill, Sounds } from "./views/Sounds";
+import { Journal } from "./views/Journal";
 import "./styles.css";
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
       {route.name === "review" && <Review onCount={setDue} />}
       {route.name === "progress" && <Progress />}
       {route.name === "sounds" && <Sounds />}
+      {route.name === "journal" && <Journal />}
       {route.name === "drill" && <Drill key={route.drill} drill={route.drill} />}
       <TabBar route={route} due={due} />
       <ToastHost />

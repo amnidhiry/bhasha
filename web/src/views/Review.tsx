@@ -33,7 +33,21 @@ const FACET_PROMPT: Record<string, string> = {
   reading: "How is it pronounced? Say it aloud, tones included.",
   listening: "Listen. What did you hear?",
   handwriting: "Write it from memory, stroke by stroke.",
+  cloze: "Fill the gap. You got this one wrong in your journal.",
 };
+
+/** The corrected sentence with the answer blanked (or filled in, once revealed). */
+function Cloze({ sentence, answer, revealed }: { sentence: string; answer: string; revealed: boolean }) {
+  const i = sentence.indexOf(answer);
+  if (i < 0) return <p class="rv-cloze" lang="zh-CN">{sentence}</p>;
+  return (
+    <p class="rv-cloze" lang="zh-CN">
+      {sentence.slice(0, i)}
+      <span class={revealed ? "filled" : "blank"}>{revealed ? answer : "\u00a0".repeat(Math.max(2, answer.length * 2))}</span>
+      {sentence.slice(i + answer.length)}
+    </p>
+  );
+}
 
 /** Hanzi Writer's mistake count -> suggested FSRS rating. Hints or giving up mean Again. */
 export function suggestRating(mistakes: number, helped: boolean): 1 | 2 | 3 {
@@ -156,7 +170,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
     }
     setRevealed(true);
     if (card.facet === "reading") speak(card.headword);
-    if (card.facet !== "handwriting") {
+    if (card.facet !== "handwriting" && !card.cloze) {
       // A second, human-written example (not the one the word was mined from).
       const id = card.card_id;
       api.examples(card.unit_id, 3)
@@ -255,6 +269,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
 
   const listening = card.facet === "listening";
   const writing = card.facet === "handwriting";
+  const cloze = card.cloze ?? null;
   const cue = writing ? masked(card.context_sentence, card.headword) : null;
   return (
     <main class="page review">
@@ -262,7 +277,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
         {modeSwitch}
         <span class="muted">{queue.length} left{doneCount ? ` · ${doneCount} done` : ""}</span>
         <span class="rv-tags">
-          <span class="chip chip-quiet">{card.facet}</span>
+          <span class="chip chip-quiet">{cloze ? "fill-in" : card.facet}</span>
           {card.is_new && <span class="chip">new</span>}
           {card.leech && <span class="chip chip-warn" title="Failed many times. Look at its parts or the sentence.">keeps slipping</span>}
           {offline && <span class="chip chip-warn">offline</span>}
@@ -292,6 +307,27 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
             <button class="btn quiet" onClick={() => { helped.current = true; pad.current?.hint(); }}>Hint</button>
             <button class="btn" onClick={reveal}>I don't remember</button>
           </div>
+        )}
+      </section>
+      ) : cloze ? (
+      <section class={`rv-card card ${revealed ? "is-revealed" : ""}`} onClick={reveal} aria-live="polite">
+        <p class="rv-prompt muted">{FACET_PROMPT.cloze}</p>
+        <Cloze sentence={cloze.sentence} answer={cloze.answer} revealed={revealed} />
+        {cloze.english && <p class="muted">{cloze.english}</p>}
+        {revealed ? (
+          <div class="rv-answer">
+            <p>
+              {cloze.wrong ? <>You wrote <s lang="zh-CN">{cloze.wrong}</s>. </> : <>You left this out. </>}
+              {cloze.explanation}
+            </p>
+            {canSpeak() && (
+              <button class="icon-btn" onClick={(e) => { e.stopPropagation(); speak(cloze.sentence); }} aria-label="Play sentence">
+                <PlayIcon />
+              </button>
+            )}
+          </div>
+        ) : (
+          <button class="btn wide reveal" onClick={(e) => { e.stopPropagation(); reveal(); }}>Show answer</button>
         )}
       </section>
       ) : (

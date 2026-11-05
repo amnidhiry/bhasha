@@ -10,6 +10,7 @@ export type Route =
   | { name: "review" }
   | { name: "progress" }
   | { name: "sounds" }
+  | { name: "journal" }
   | { name: "drill"; drill: string };
 
 export function parse(hash: string): Route {
@@ -19,6 +20,7 @@ export function parse(hash: string): Route {
   if (parts[0] === "progress") return { name: "progress" };
   if (parts[0] === "sounds" && parts[1] === "drill" && parts[2]) return { name: "drill", drill: decodeURIComponent(parts[2]) };
   if (parts[0] === "sounds") return { name: "sounds" };
+  if (parts[0] === "journal") return { name: "journal" };
   return { name: "library" };
 }
 

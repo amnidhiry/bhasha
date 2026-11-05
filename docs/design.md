@@ -248,7 +248,7 @@ The known-word list and style rubric sit at the front of the prompt so prompt ca
 
 | Feature | What the model does | What code does |
 |---|---|---|
-| Journal correction | Returns the corrected text plus a list of errors, each with a category (word choice, measure word, word order, aspect particle, missing word), a one-line explanation and the corrected span. | Maps each error to a knowledge unit and creates a cloze card from your corrected sentence. Repeated categories raise that grammar point's priority. |
+| Journal correction (built) | Returns the corrected text plus a list of errors, each with a category (word choice, measure word, word order, aspect particle, missing word, extra word, wrong character, grammar), a one-line explanation and the corrected span. | Verifies each error against the text (drops ones that don't match), maps it to a knowledge unit and creates a cloze card from your corrected sentence. Category counts are shown; raising grammar-point priority waits for the grammar track. |
 | Tutor | Holds a conversation inside your vocabulary, staying on a chosen scenario, and annotates your errors as it goes. | Enforces the vocabulary limit by checking coverage on each reply and regenerating if it drifts. Voice adds ASR in and TTS out later. |
 | Explain this | "Why 了 here?" or "How is 才 different from 就?" on any sentence, answered at your level. | Links the answer to the relevant Grammar Wiki point. |
 | Pre-teaching texts | Writes a short easy text that uses the hardest words of an imported article before you read it. | Picks those words by frequency and coverage gap. |
