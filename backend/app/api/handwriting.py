@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import current_user
 from app.db import get_db
-from app.learner import retrievability
+from app.learner import retrievability, user_scheduler
 from app.models import AppUser, Card, CharacterStrokes, Unit
 from app.reader import now
 from app.units import ensure_character
@@ -37,6 +37,7 @@ def overview(db: Session = Depends(get_db), user: AppUser = Depends(current_user
     """Progress through the official HSK 3.0 handwriting list, by band."""
     cards = _hw_cards(db, user.id)
     t = now()
+    sched = user_scheduler(db, user.id)
     units = list(db.scalars(select(Unit).where(Unit.language == "zh", Unit.type == "character")))
     out = []
     for band in BANDS:
@@ -44,7 +45,7 @@ def overview(db: Session = Depends(get_db), user: AppUser = Depends(current_user
         in_band = [u for u in units if tag in (u.level_tags or [])]
         practising = [u for u in in_band if u.id in cards]
         written = [u for u in practising
-                   if cards[u.id].state == 2 and retrievability(cards[u.id], t) >= WRITTEN]
+                   if cards[u.id].state == 2 and retrievability(cards[u.id], t, sched) >= WRITTEN]
         out.append({"band": band, "total": len(in_band), "practising": len(practising), "written": len(written)})
     listed = {u.id for u in units if any(tag.startswith("hw2025:") for tag in (u.level_tags or []))}
     extra = sum(1 for uid in cards if uid not in listed)

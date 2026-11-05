@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import current_user
 from app.config import get_settings
 from app.db import get_db
-from app.learner import _aware, apply_review, is_leech, replay, retrievability, scheduler
+from app.learner import _aware, apply_review, is_leech, replay, retrievability, user_scheduler
 from app.models import AppUser, Card, CedictEntry, CharacterInfo, ReviewLog, Unit
 from app.packs.zh.pinyin import numeric_to_marks
 from fsrs import State
@@ -75,9 +75,9 @@ class SchedulerParams(BaseModel):
 
 
 @router.get("/params", response_model=SchedulerParams)
-def params(_: AppUser = Depends(current_user)):
+def params(db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
     """The exact scheduler the server runs, mirrored by ts-fsrs in the PWA."""
-    sch = scheduler()
+    sch = user_scheduler(db, user.id)
     return SchedulerParams(
         version="FSRS-6",
         weights=list(sch.parameters),
@@ -121,6 +121,7 @@ def due(limit: int = 50, mode: str = "words", db: Session = Depends(get_db), use
 
     out: list[DueCard] = []
     seen_units: set[int] = set()
+    sched = user_scheduler(db, user.id)
     cards = db.scalars(
         select(Card).where(Card.user_id == user.id, ~Card.suspended, Card.due <= now, in_mode)
         .order_by(Card.due)
@@ -142,7 +143,7 @@ def due(limit: int = 50, mode: str = "words", db: Session = Depends(get_db), use
             reading_display=" ".join(numeric_to_marks(x) for x in c.unit.reading.split()),
             meanings=meanings_for(db, c.unit), classifiers=(c.unit.extra or {}).get("classifiers", []),
             context_sentence=c.context_sentence, due=_aware(c.due), is_new=is_new, leech=is_leech(c),
-            retrievability=retrievability(c, now),
+            retrievability=retrievability(c, now, sched),
             fsrs=FsrsState(state=c.state, step=c.step, stability=c.stability, difficulty=c.difficulty,
                            due=_aware(c.due), last_review=_aware(c.last_review), lapses=c.lapses),
         ))
@@ -179,6 +180,7 @@ def add_listening_card_if_ready(db: Session, card: Card) -> None:
 
 def record_reviews(db: Session, user_id: int, reviews: list[ReviewIn]) -> SyncResult:
     result = SyncResult(applied=[], duplicates=[], replayed_cards=[])
+    sched = user_scheduler(db, user_id)
     needs_replay: set[int] = set()
     for r in sorted(reviews, key=lambda r: _aware(r.reviewed_at)):
         if db.get(ReviewLog, r.id) is not None:
@@ -195,12 +197,12 @@ def record_reviews(db: Session, user_id: int, reviews: list[ReviewIn]) -> SyncRe
         elif card.last_review is not None and _aware(r.reviewed_at) < _aware(card.last_review):
             needs_replay.add(card.id)  # out-of-order offline sync
         else:
-            apply_review(card, r.rating, r.reviewed_at, r.duration_ms)
+            apply_review(card, r.rating, r.reviewed_at, r.duration_ms, sched)
         result.applied.append(r.id)
     db.flush()
     for card_id in needs_replay:
         card = db.get(Card, card_id)
-        replay(card, db.scalars(select(ReviewLog).where(ReviewLog.card_id == card_id)))
+        replay(card, db.scalars(select(ReviewLog).where(ReviewLog.card_id == card_id)), user_scheduler(db, user_id, fuzz=False))
         result.replayed_cards.append(card_id)
     for card_id in {r.card_id for r in reviews}:
         add_listening_card_if_ready(db, db.get(Card, card_id))

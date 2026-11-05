@@ -19,6 +19,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+# The nightly FSRS fit (worker image). For CPU-only PyTorch locally:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+optimizer = ["torch", "numpy", "pandas", "tqdm"]
 
 [build-system]
 requires = ["setuptools>=69"]

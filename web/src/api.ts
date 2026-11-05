@@ -179,6 +179,27 @@ export interface Bootcamp {
   mastery: { window: number; accuracy: number };
 }
 
+export interface FsrsStatus {
+  personalized: boolean;
+  fitted_at: string | null;
+  desired_retention: number;
+  retention_is_default: boolean;
+  suggested_retention: number | null;
+  reviews: number;
+  min_reviews: number;
+  fit_due: string | null;
+  fit_running: boolean;
+  history: {
+    id: number;
+    status: "accepted" | "rejected" | "skipped" | "failed";
+    message: string;
+    n_reviews: number;
+    metrics: { holdout_current?: { log_loss: number | null; rmse_bins: number | null; n: number }; holdout_fitted?: { log_loss: number | null; rmse_bins: number | null; n: number } };
+    optimal_retention: number | null;
+    created_at: string;
+  }[];
+}
+
 export interface Progress {
   known_words: number;
   known_characters: number;
@@ -257,6 +278,10 @@ export const api = {
   sync: (reviews: unknown[]) =>
     post<{ applied: string[]; duplicates: string[]; replayed_cards: number[] }>("/reviews", reviews),
   progress: () => req<Progress>("/progress"),
+  fsrs: () => req<FsrsStatus>("/fsrs"),
+  fsrsFit: () => post<FsrsStatus>("/fsrs/fit", {}),
+  fsrsRetention: (desired_retention: number | null) =>
+    req<FsrsStatus>("/fsrs/retention", { method: "PUT", body: JSON.stringify({ desired_retention }) }),
   bootcamp: () => req<Bootcamp>("/bootcamp"),
   examples: (unitId: number, limit = 3) => req<Example[]>(`/units/${unitId}/examples?limit=${limit}`),
   sentencesText: (n = 8) => post<TextDoc>("/texts/sentences", { n }),

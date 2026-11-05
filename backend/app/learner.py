@@ -14,18 +14,29 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models import Card, ReviewLog, Unit, UnitMark
+from app.models import Card, ReviewLog, Unit, UnitMark, UserFsrs
 
 LEECH_LAPSES = 8
 
 
-@lru_cache
-def scheduler(desired_retention: float | None = None, fuzz: bool = True) -> Scheduler:
-    # TODO(phase 1): load per-user parameters fitted by the nightly optimizer job.
-    return Scheduler(
-        desired_retention=desired_retention or get_settings().desired_retention,
-        enable_fuzzing=fuzz,
-    )
+@lru_cache(maxsize=64)
+def scheduler(weights: tuple[float, ...] | None = None, desired_retention: float | None = None,
+              fuzz: bool = True) -> Scheduler:
+    kwargs = {"parameters": weights} if weights else {}
+    return Scheduler(desired_retention=desired_retention or get_settings().desired_retention,
+                     enable_fuzzing=fuzz, **kwargs)
+
+
+def user_settings(db: Session, user_id: int) -> UserFsrs | None:
+    return db.get(UserFsrs, user_id)
+
+
+def user_scheduler(db: Session, user_id: int, fuzz: bool = True) -> Scheduler:
+    """The learner's own scheduler: weights fitted by the nightly optimizer (once
+    accepted) and their chosen retention; FSRS-6 defaults until then."""
+    u = user_settings(db, user_id)
+    weights = tuple(u.weights) if u and u.weights else None
+    return scheduler(weights, u.desired_retention if u else None, fuzz)
 
 
 def _aware(dt: datetime | None) -> datetime | None:
@@ -59,26 +70,27 @@ def load_fsrs(card: Card, f: FsrsCard) -> None:
     card.last_review = f.last_review
 
 
-def retrievability(card: Card, now: datetime | None = None) -> float:
+def retrievability(card: Card, now: datetime | None = None, sched: Scheduler | None = None) -> float:
     if card.last_review is None or card.stability is None:
         return 0.0
-    return scheduler().get_card_retrievability(to_fsrs(card), now or datetime.now(timezone.utc))
+    return (sched or scheduler()).get_card_retrievability(to_fsrs(card), now or datetime.now(timezone.utc))
 
 
-def apply_review(card: Card, rating: int, reviewed_at: datetime, duration_ms: int | None = None) -> None:
+def apply_review(card: Card, rating: int, reviewed_at: datetime, duration_ms: int | None = None,
+                 sched: Scheduler | None = None) -> None:
     """Apply one review in chronological order."""
     was_review = card.state == int(State.Review)
-    f, _ = scheduler().review_card(to_fsrs(card), Rating(rating), _aware(reviewed_at), duration_ms)
+    f, _ = (sched or scheduler()).review_card(to_fsrs(card), Rating(rating), _aware(reviewed_at), duration_ms)
     load_fsrs(card, f)
     if rating == int(Rating.Again) and was_review:
         card.lapses += 1
 
 
-def replay(card: Card, logs: Iterable[ReviewLog]) -> None:
+def replay(card: Card, logs: Iterable[ReviewLog], sched: Scheduler | None = None) -> None:
     """Rebuild a card's state from its full history. Used when an offline client
     syncs a review older than the card's last review, so arrival order never matters.
-    Fuzzing is off during replay so the result is deterministic."""
-    sched = scheduler(fuzz=False)
+    Pass a scheduler without fuzzing so the result is deterministic."""
+    sched = sched or scheduler(fuzz=False)
     sim = FsrsCard(card_id=card.id, due=_aware(card.created_at))
     lapses = 0
     for log in sorted(logs, key=lambda l: _aware(l.reviewed_at)):
@@ -98,6 +110,7 @@ def known_unit_ids(db: Session, user_id: int, language: str, now: datetime | Non
     # (R = (1 + factor * t / S) ** decay) if this ever gets slow.
     threshold = get_settings().known_threshold
     now = now or datetime.now(timezone.utc)
+    sched = user_scheduler(db, user_id)
     known = set(
         db.scalars(
             select(UnitMark.unit_id)
@@ -113,7 +126,7 @@ def known_unit_ids(db: Session, user_id: int, language: str, now: datetime | Non
     # Only graduated cards count: a card in its first learning steps has R near 1.0
     # minutes after being seen, which says nothing about tomorrow.
     known.update(
-        c.unit_id for c in cards if c.state == int(State.Review) and retrievability(c, now) >= threshold
+        c.unit_id for c in cards if c.state == int(State.Review) and retrievability(c, now, sched) >= threshold
     )
     return known
 

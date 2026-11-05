@@ -7,7 +7,8 @@ import time
 
 from app.bootstrap import warm_packs
 from app.db import SessionLocal
-from app.jobs import requeue_stale, run_once
+from app.fsrs_fit import maybe_schedule
+from app.jobs import enqueue, requeue_stale, run_once
 
 IDLE_SECONDS = 2.0
 log = logging.getLogger("bhasha.worker")
@@ -29,7 +30,7 @@ def main() -> None:
         if n := requeue_stale(db):
             log.info("requeued %d stale jobs", n)
     log.info("worker ready")
-    last_sweep = time.monotonic()
+    last_sweep = 0.0  # sweep (stale jobs, nightly fits) right away
     while not stopping:
         job = run_once(SessionLocal)
         if job is not None:
@@ -38,6 +39,8 @@ def main() -> None:
         if time.monotonic() - last_sweep > 300:
             with SessionLocal() as db:
                 requeue_stale(db)
+                if n := maybe_schedule(db, enqueue):
+                    log.info("queued %d nightly FSRS fits", n)
             last_sweep = time.monotonic()
         time.sleep(IDLE_SECONDS)
 

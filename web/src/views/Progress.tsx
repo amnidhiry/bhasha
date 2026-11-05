@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "preact/hooks";
 import { api, type Progress as P } from "../api";
 import { HandwritingProgress } from "../components/HandwritingProgress";
 import { ModelSettings } from "../components/ModelSettings";
+import { SchedulingCard } from "../components/SchedulingCard";
 import { toast } from "../components/Toast";
 import { num, pct } from "../format";
 import { setSettings, useSettings } from "../settings";
@@ -72,6 +73,8 @@ export function Progress() {
           ))}
         </div>
       </details>
+
+      <SchedulingCard />
 
       <ModelSettings />
 

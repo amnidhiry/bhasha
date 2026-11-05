@@ -327,3 +327,31 @@ class SentenceUnit(Base):
     __tablename__ = "sentence_unit"
     sentence_id: Mapped[int] = mapped_column(ForeignKey("example_sentence.id", ondelete="CASCADE"), primary_key=True)
     unit_id: Mapped[int] = mapped_column(ForeignKey("unit.id", ondelete="CASCADE"), primary_key=True, index=True)
+
+
+class UserFsrs(Base):
+    """A learner's scheduler settings. Null weights = FSRS-6 defaults; null
+    retention = BHASHA_DESIRED_RETENTION."""
+
+    __tablename__ = "user_fsrs"
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"), primary_key=True)
+    weights: Mapped[list | None] = mapped_column(JSONType)
+    desired_retention: Mapped[float | None] = mapped_column(Float)
+    fitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    n_reviews: Mapped[int] = mapped_column(Integer, default=0)
+    version: Mapped[int] = mapped_column(Integer, default=0)  # bumps on every change
+
+
+class FsrsFit(Base):
+    """One optimizer run: accepted, rejected (no better on held-out cards) or skipped."""
+
+    __tablename__ = "fsrs_fit"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(16))  # accepted | rejected | skipped | failed
+    message: Mapped[str] = mapped_column(SAText, default="")
+    n_reviews: Mapped[int] = mapped_column(Integer, default=0)
+    weights: Mapped[list | None] = mapped_column(JSONType)
+    metrics: Mapped[dict] = mapped_column(JSONType, default=dict)
+    optimal_retention: Mapped[float | None] = mapped_column(Float)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

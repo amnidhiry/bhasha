@@ -7,6 +7,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      target: api
     restart: unless-stopped
     environment:
       BHASHA_DATABASE_URL: postgresql+psycopg://bhasha:${POSTGRES_PASSWORD:?set in .env}@db:5432/bhasha
@@ -33,8 +34,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      target: worker   # adds CPU PyTorch for the nightly FSRS optimizer
     restart: unless-stopped
-    command: ["python", "-m", "app.worker"]
     environment:
       BHASHA_DATABASE_URL: postgresql+psycopg://bhasha:${POSTGRES_PASSWORD:?set in .env}@db:5432/bhasha
       BHASHA_TIMEZONE: ${BHASHA_TIMEZONE:-UTC}

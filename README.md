@@ -8,6 +8,12 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 
 ### Phase 1 PWA (in progress)
 
+- [x] Nightly FSRS re-fit: once you have 400 reviews, the worker fits FSRS-6 to your own log (then monthly, or
+      when the log grows by a quarter). New parameters are used only if they predict held-out cards better
+      (log loss and binned RMSE, as srs-benchmark scores them); every attempt and its numbers is in Progress →
+      Scheduling. It also suggests a target recall that minimizes study time, which you can accept with a tap. The
+      server and the PWA's offline scheduler switch together. PyTorch (CPU) is in the worker image only
+
 - [x] SUBTLEX-CH word frequencies (99k words) rank every word the HSK list doesn't, shown as "#1,003 most
       common" in the lookup sheet
 - [x] Tatoeba example sentences (human-written, CC BY 2.0 FR, Simplified only, each linked to its source):
@@ -73,7 +79,7 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 - [x] Mining requires a context sentence or text; placement bulk-marking by HSK level
 - [x] Progress: known words and characters, cumulative HSK coverage, characters read
 
-Next: the nightly FSRS optimizer, g2pM for polyphones, and server-side TTS.
+Next: g2pM for polyphones and server-side TTS.
 
 ## Run it
 
@@ -119,7 +125,8 @@ cd backend && python -m venv .venv && . .venv/bin/activate && pip install -e '.[
 Without `BHASHA_DATABASE_URL` the API uses SQLite (`bhasha.db`). Run `alembic upgrade head` first. Either run
 `python -m app.worker` alongside the API, or set `BHASHA_INLINE_JOBS=true` to run jobs inside the API process.
 
-The tests use SQLite by default. To run them on Postgres, which also covers the concurrent-claim test:
+The FSRS-fit tests need PyTorch (`pip install -e '.[optimizer]'`) and are skipped without it. The tests use
+SQLite by default. To run them on Postgres, which also covers the concurrent-claim test:
 
 ```bash
 BHASHA_TEST_DATABASE_URL="postgresql+psycopg://bhasha@/bhasha_test?host=/run/postgresql" pytest

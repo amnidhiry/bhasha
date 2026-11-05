@@ -225,7 +225,7 @@ A word counts as known for coverage when its meaning facet's recall probability 
 ### Scheduling policy
 
 - Desired retention defaults to 0.9 and is adjustable per card type, since listening and handwriting can tolerate lower targets.
-- Start with FSRS default parameters, then fit your own with the FSRS optimizer once the review log is large enough, and re-fit monthly.
+- Start with FSRS default parameters, then fit your own with the FSRS optimizer once the review log is large enough (400 reviews), and re-fit monthly or when the log grows by a quarter. A fit is used only if it predicts a held-out 20% of cards better than the current parameters (log loss); the optimal-retention estimate is offered, not applied.
 - Cap new cards per day and total reviews per day, with a "reading first" mode that skips new cards when the backlog is high.
 - Leeches (cards failed repeatedly) trigger help instead of more drilling: show the decomposition, generate a mnemonic, add two fresh example sentences, or suggest suspending the card.
 - New words enter the queue only after you meet them in a text, never from a bare list.

@@ -72,7 +72,14 @@ def _generate(db: Session, job: Job) -> dict:
     return {"text_id": text.id, "title": text.title}
 
 
-HANDLERS: dict[str, Callable[[Session, Job], dict]] = {"generate": _generate}
+def _fsrs_fit(db: Session, job: Job) -> dict:
+    from app.fsrs_fit import fit
+
+    result = fit(db, job.user_id, force=bool(job.params.get("force")))
+    return {"fit_id": result.id, "status": result.status, "message": result.message}
+
+
+HANDLERS: dict[str, Callable[[Session, Job], dict]] = {"generate": _generate, "fsrs_fit": _fsrs_fit}
 
 
 def run(db: Session, job: Job) -> Job:
