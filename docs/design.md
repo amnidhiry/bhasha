@@ -130,7 +130,7 @@ Every module starts from an existing repo; we write only the glue, the learner m
 | PWA reference code | ts-fsrs-demo and spaced | Read for review-screen and data-layer patterns; borrow what fits | Our own UI |
 | Segmentation | jieba | pip; load HSK lists and your known words as a user dictionary | Adapt Lute's split-rule file format for over-merged words |
 | Pinyin | pypinyin (MIT) | pip; supports heteronyms and custom phrase dictionaries | Tone-sandhi rules layered on top (third tone, 一, 不) |
-| Polyphones | g2pM | pip; call only for polyphonic characters | Nothing beyond the call site |
+| Polyphones | pypinyin + context rules (g2pM evaluated, not used) | `backend/app/packs/zh/polyphones.py` | Measured on 28 polyphone sentences: g2pM was no better than pypinyin on standalone characters (6/14 each) and worse inside words (8/14 vs 11/14), e.g. 银行 as yín xíng. Explicit context rules for standalone 得, 地, 长, 还 and 重 raise the set to 23/28 (in-sample). |
 | Dictionary | CC-CEDICT | Data import script into its own table | Parser (small; format is one line per entry) |
 | Characters and strokes | Make Me a Hanzi | Data import (dictionary.txt and graphics.txt) | Component index ("characters containing X") |
 | Handwriting on web | Hanzi Writer | npm; its quiz mode already grades strokes | Map its mistake counts to an FSRS rating |

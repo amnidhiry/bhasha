@@ -67,3 +67,19 @@ def test_token_kinds_and_sentences(pack):
 def test_split_rules():
     p = ZhPack(split_rules={"银行": ["银", "行"]})
     assert [t.surface for t in p.analyze("银行")] == ["银", "行"]
+
+
+@pytest.mark.parametrize("sentence,char,reading", [
+    ("他跑得很快。", "得", "de5"), ("我得走了。", "得", "dei3"),
+    ("慢慢地走。", "地", "de5"), ("在地上。", "地", "di4"),
+    ("头发很长。", "长", "chang2"), ("他长得很高。", "长", "zhang3"),
+    ("我还你钱。", "还", "huan2"), ("他还没来。", "还", "hai2"),
+    ("请重说一遍。", "重", "chong2"), ("这个很重。", "重", "zhong4"),
+])
+def test_standalone_polyphones_in_context(pack, sentence, char, reading):
+    pos = 0
+    for t in pack.analyze(sentence):
+        if pos <= sentence.index(char) < pos + len(t.surface):
+            assert t.syllables[sentence.index(char) - pos].citation == reading, [x.surface for x in pack.analyze(sentence)]
+            return
+        pos += len(t.surface)

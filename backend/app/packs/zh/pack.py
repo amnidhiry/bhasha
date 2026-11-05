@@ -8,6 +8,7 @@ import jieba.posseg
 
 from app.packs.base import NUMBER, OTHER, PROPER, PUNCT, WORD, LanguagePack, Syllable, Token
 from app.packs.zh.pinyin import apply_sandhi, citation_syllables, numeric_to_marks
+from app.packs.zh.polyphones import context_reading
 
 jieba.setLogLevel(logging.WARNING)
 
@@ -94,11 +95,21 @@ class ZhPack(LanguagePack):
         tokens: list[Token] = []
         sentence = 0
         phrase: list[Token] = []  # CJK tokens between punctuation, for sandhi
+        flags: dict[int, str] = {}  # id(token) -> jieba part-of-speech, for polyphone rules
+
+        def cite_at(i: int) -> list[str]:
+            t = phrase[i]
+            if len(t.surface) == 1:
+                prev = (phrase[i - 1].surface, flags[id(phrase[i - 1])]) if i > 0 else None
+                nxt = (phrase[i + 1].surface, flags[id(phrase[i + 1])]) if i + 1 < len(phrase) else None
+                if r := context_reading(t.surface, prev, nxt):
+                    return [r]
+            return self.citation(t.surface)
 
         def flush():
             if not phrase:
                 return
-            cites = [(t.surface, self.citation(t.surface)) for t in phrase]
+            cites = [(t.surface, cite_at(i)) for i, t in enumerate(phrase)]
             surfaces = apply_sandhi(cites)
             for t, (_, cite), surf in zip(phrase, cites, surfaces):
                 t.syllables = [
@@ -110,6 +121,7 @@ class ZhPack(LanguagePack):
         for word, flag in self._segment(text):
             kind = self._kind(word, flag)
             tok = Token(surface=word, kind=kind, sentence_index=sentence)
+            flags[id(tok)] = flag
             tokens.append(tok)
             if _CJK.search(word):
                 phrase.append(tok)
