@@ -4,6 +4,7 @@ import { PlayIcon } from "../components/LookupSheet";
 import { Pinyin } from "../components/Pinyin";
 import { cachedParams, cachedQueue, cachedWaiting, enqueue, flush, pending, saveParams, saveQueue, saveWaiting, type Mode } from "../outbox";
 import { WritingPad, type PadHandle } from "../components/WritingPad";
+import { CardHelp } from "../components/CardHelp";
 import { makeSchedulerSet, review as localReview } from "../scheduler";
 import { canSpeak, speak } from "../speech";
 
@@ -85,6 +86,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
   const [mistakes, setMistakes] = useState<number | null>(null);
   const helped = useRef(false);
   const [example, setExample] = useState<Example | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
   const pad = useRef<PadHandle>(null);
   const setMode = (m: Mode) => {
     try { localStorage.setItem(MODE_KEY, m); } catch { /* ignore */ }
@@ -157,6 +159,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
     setSuggested(null);
     setMistakes(null);
     setExample(null);
+    setShowHelp(false);
     helped.current = false;
     shownAt.current = Date.now();
     if (card?.facet === "listening") speak(card.headword);
@@ -370,6 +373,18 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
             </ul>
             {card.classifiers.length > 0 && <p class="muted" lang="zh-CN">MW {card.classifiers.join(" · ")}</p>}
             {listening && card.context_sentence && <Sentence text={card.context_sentence} word={card.headword} />}
+            {card.leech && !showHelp && (
+              <button class="btn wide" onClick={(e) => { e.stopPropagation(); setShowHelp(true); }}>
+                Help with this word (failed {card.fsrs.lapses}×)
+              </button>
+            )}
+            {showHelp && (
+              <CardHelp cardId={card.card_id} onSuspended={() => {
+                const rest = queue!.slice(1);
+                saveQueue(rest, mode);
+                setQueue(rest);
+              }} />
+            )}
             {example && (
               <div class="rv-example">
                 <Sentence text={example.text} word={card.headword} />

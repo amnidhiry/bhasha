@@ -261,6 +261,17 @@ export interface TutorSession {
   mistakes: number;
 }
 
+export interface CardHelp {
+  card_id: number;
+  headword: string;
+  lapses: number;
+  suspended: boolean;
+  characters: { char: string; reading: string | null; definition: string | null; notes: string[];
+    parts: { part: string; meaning: string | null; reading: string | null; role: "meaning" | "sound" | null }[] }[];
+  examples: Example[];
+  mnemonic: string | null;
+}
+
 export interface Progress {
   known_words: number;
   known_characters: number;
@@ -429,6 +440,9 @@ export const api = {
   speech: () => req<SpeechStatus>("/speech"),
   speechVoice: (voice: string) => req<SpeechStatus>("/speech/voice", { method: "PUT", body: JSON.stringify({ voice }) }),
   toneCheck: (voices: string[] = []) => post<{ job_id: number }>("/speech/tone-check", { voices }),
+  cardHelp: (id: number) => req<CardHelp>(`/cards/${id}/help`),
+  cardMnemonic: (id: number) => post<{ mnemonic: string }>(`/cards/${id}/mnemonic`, {}),
+  cardSuspend: (id: number, suspended = true) => post<{ suspended: boolean }>(`/cards/${id}/suspend`, { suspended }),
   fsrsFit: () => post<FsrsStatus>("/fsrs/fit", {}),
   fsrsFacetRetention: (facet: string, desired_retention: number | null) =>
     req<FsrsStatus>("/fsrs/retention", { method: "PUT", body: JSON.stringify({ facet, desired_retention }) }),

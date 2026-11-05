@@ -649,3 +649,12 @@ details.sub summary { font-weight: 550; color: var(--ink-2); font-size: 0.9rem; 
 .paused-note { background: var(--learning); color: var(--learning-ink); border-radius: 10px; padding: 8px 12px; margin: 8px 0 0; }
 .inline-field { grid-template-columns: 1fr auto; align-items: center; margin: 6px 0; }
 .toggle select { font: inherit; margin: 0 2px; }
+
+/* Leech help */
+.card-help { text-align: left; width: 100%; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--rule); display: grid; gap: 10px; }
+.card-help p { margin: 2px 0; }
+.ch-row { display: flex; gap: 12px; align-items: flex-start; }
+.ch-glyph { font: 2.2rem/1 var(--serif-zh); text-decoration: none; min-width: 1.2em; }
+.ch-part { display: inline-flex; gap: 4px; align-items: center; margin-right: 10px; }
+.mnemonic { background: var(--learning); color: var(--learning-ink); border-radius: 10px; padding: 10px 12px; }
+.ex-zh-inline { font: 1.05rem var(--serif-zh); cursor: pointer; }
