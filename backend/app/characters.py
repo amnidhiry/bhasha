@@ -58,7 +58,9 @@ VARIANT_FAMILIES: dict[str, tuple[str, ...]] = {
     "攴": ("攵",),
     "爪": ("爫",),
     "老": ("耂",),
-    "肉": ("⺼",),
+    # ⺼ (meat, as in 肚 and 脸) is written exactly like 月 in simplified script, so
+    # a learner looking for 月 expects to find them; Make Me a Hanzi keeps them apart.
+    "月": ("⺼",),
     "玉": ("⺩",),
     "羊": ("⺶", "⺷", "𦍌"),
     "爿": ("丬",),

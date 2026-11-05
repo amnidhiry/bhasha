@@ -19,6 +19,8 @@ EXTRA = [
      {"type": "ideographic", "hint": "Water 水 flowing from a spring 白"}, "水"),
     ("月", "moon; month", ["yuè"], "⿵冂二", {"type": "pictographic", "hint": "A crescent moon"}, "月"),
     ("龶", None, [], "？", None, "龶"),
+    ("肚", "belly; abdomen, bowels", ["dù"], "⿰⺼土",
+     {"type": "pictophonetic", "phonetic": "土", "semantic": "⺼", "hint": "flesh"}, "⺼"),
     ("精", "essence; semen; spirit", ["jīng"], "⿰米青",
      {"type": "pictophonetic", "phonetic": "青", "semantic": "米", "hint": "grain"}, "米"),
     ("猜", "guess, conjecture, suppose; feel", ["cāi"], "⿰犭青",
@@ -171,6 +173,9 @@ def test_explorer_merges_variants_and_recurses(chars):
     assert by["清"]["depth"] == 2 and by["清"]["via"] == "青"  # 清 → 青 → 月
     direct = chars.get("/api/components/月", params={"all": "true", "direct": "true"}).json()
     assert "清" not in {c["character"] for c in direct["characters"]}
+    # ⺼ (meat) looks like 月 in simplified script, so it's in the 月 family.
+    assert "肚" in {c["character"] for c in direct["characters"]}
+    assert family("⺼") == "月"
 
 
 def test_explorer_ranks_known_first_then_frequency(chars):
