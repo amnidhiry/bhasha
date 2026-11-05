@@ -12,7 +12,9 @@ export type Route =
   | { name: "sounds" }
   | { name: "journal" }
   | { name: "talk"; id?: number }
-  | { name: "drill"; drill: string };
+  | { name: "drill"; drill: string }
+  | { name: "char"; char: string } // #/char/银  character page
+  | { name: "chars"; component?: string }; // #/chars  overview, #/chars/氵  component explorer
 
 export function parse(hash: string): Route {
   const parts = hash.replace(/^#\/?/, "").split("/");
@@ -23,6 +25,8 @@ export function parse(hash: string): Route {
   if (parts[0] === "sounds") return { name: "sounds" };
   if (parts[0] === "journal") return { name: "journal" };
   if (parts[0] === "talk") return parts[1] ? { name: "talk", id: Number(parts[1]) } : { name: "talk" };
+  if (parts[0] === "char" && parts[1]) return { name: "char", char: decodeURIComponent(parts[1]) };
+  if (parts[0] === "chars") return { name: "chars", component: parts[1] ? decodeURIComponent(parts[1]) : undefined };
   return { name: "library" };
 }
 

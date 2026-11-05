@@ -9,7 +9,7 @@ const tabs = [
 ] as const;
 
 export function TabBar({ route, due }: { route: Route; due: number }) {
-  const active = route.name === "read" ? "library" : route.name === "drill" ? "sounds" : route.name === "talk" ? "journal" : route.name;
+  const active = route.name === "read" ? "library" : route.name === "drill" ? "sounds" : route.name === "talk" ? "journal" : route.name === "char" || route.name === "chars" ? "progress" : route.name;
   return (
     <nav class="tabbar" aria-label="Main">
       {tabs.map((t) => (

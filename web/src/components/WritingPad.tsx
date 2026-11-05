@@ -15,7 +15,7 @@ interface Props {
 }
 
 type Loader = NonNullable<Parameters<typeof HanziWriter.create>[2]>["charDataLoader"];
-const loadChar: NonNullable<Loader> = (ch, onLoad, onError) => {
+export const loadChar: NonNullable<Loader> = (ch, onLoad, onError) => {
   fetch(`/api/hanzi/${encodeURIComponent(ch)}`)
     .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
     .then(onLoad, onError);

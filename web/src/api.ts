@@ -267,6 +267,81 @@ export interface Progress {
   characters_read: number;
 }
 
+export type Transparency = "clear" | "partial" | "opaque" | "unknown";
+export type CharStatus = "known" | "learning" | "new";
+
+export interface CharSummary {
+  character: string;
+  pinyin: string[];
+  definition: string | null;
+  status: CharStatus;
+  frequency_rank: number | null;
+  transparency: Transparency;
+}
+
+export interface ComponentFamily {
+  key: string;
+  members: string[];
+  definition: string | null;
+  pinyin: string[];
+}
+
+export interface CharNote {
+  kind: string;
+  component: string | null;
+  text: string;
+  match?: string;
+}
+
+export interface CharWord {
+  unit_id: number;
+  headword: string;
+  reading_display: string;
+  meanings: string[];
+  status: CharStatus;
+}
+
+export interface CharacterPage extends CharSummary {
+  decomposition: string | null;
+  radical: string | null;
+  radical_family: string | null;
+  etymology: { type?: string; hint?: string; semantic?: string; phonetic?: string } | null;
+  parts: {
+    component: string;
+    family: string;
+    members: string[];
+    definition: string | null;
+    gloss: string | null;
+    pinyin: string[];
+    role: "meaning" | "sound" | null;
+    decomposition: string | null;
+    yours: number;
+  }[];
+  frequency: { rank: number; per_million: number } | null;
+  notes: CharNote[];
+  words: CharWord[];
+  more_words: CharWord[];
+  has_strokes: boolean;
+  writing: boolean;
+  attribution: string;
+}
+
+export interface ComponentResult {
+  component: string;
+  family: ComponentFamily;
+  counts: { total: number; known: number; learning: number };
+  characters: (CharSummary & { depth: number; via: string | null })[];
+  filtered: boolean;
+  attribution: string;
+}
+
+export interface CharactersOverview {
+  counts: { known: number; learning: number };
+  characters: CharSummary[];
+  groups: (ComponentFamily & { count: number; characters: string[] })[];
+  attribution: string;
+}
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -354,6 +429,10 @@ export const api = {
   fsrsRetention: (desired_retention: number | null) =>
     req<FsrsStatus>("/fsrs/retention", { method: "PUT", body: JSON.stringify({ desired_retention }) }),
   bootcamp: () => req<Bootcamp>("/bootcamp"),
+  characters: () => req<CharactersOverview>("/characters"),
+  character: (ch: string) => req<CharacterPage>(`/characters/${encodeURIComponent(ch)}`),
+  component: (c: string, opts: { all?: boolean; direct?: boolean } = {}) =>
+    req<ComponentResult>(`/components/${encodeURIComponent(c)}?all=${!!opts.all}&direct=${!!opts.direct}`),
   examples: (unitId: number, limit = 3) => req<Example[]>(`/units/${unitId}/examples?limit=${limit}`),
   sentencesText: (n = 8) => post<TextDoc>("/texts/sentences", { n }),
   drill: (drill: string, n = 10) => req<DrillItem[]>(`/bootcamp/drill?drill=${encodeURIComponent(drill)}&n=${n}`),

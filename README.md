@@ -24,6 +24,12 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
       lines kept from bilingual files, long files split into ~1,500-character parts) and subtitles from your
       Jellyfin (`BHASHA_JELLYFIN_URL`, `BHASHA_JELLYFIN_API_KEY`). Every source shows "62% known · 3,400
       characters" before you add it
+- [x] Characters (Progress → Characters, or tap a character in the lookup sheet): a page per character with
+      stroke-order animation, Make Me a Hanzi parts and their roles, readings, frequency and your words with it;
+      a component explorer ("every character you know with 氵", variants such as 氵/水 and 钅/金 count as one
+      family, parts of parts too); your characters grouped by their most common parts. Gentle notes flag
+      "opaque" characters whose parts mislead: a sound part that shares neither initial nor rhyme with the
+      reading (银 yín, 艮 gěn), or a part a meaning compound's story never uses (又 in 汉)
 
 - [x] Server-side speech: a separate speech service (`speech/`, Kokoro, CPU container on the homelab) that bhasha
       calls over HTTP. Every clip is cached on the homelab; new texts are pre-rendered sentence by sentence in the

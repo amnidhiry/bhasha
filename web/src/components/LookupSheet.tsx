@@ -119,10 +119,12 @@ export function LookupSheet({ target, onClose, onChanged }: {
             </p>
           ))}
 
-          {data.characters.length > 1 || parts(data.characters[0]?.decomposition).length > 1 ? (
+          {data.characters.length > 0 ? (
             <div class="lk-chars">
               {data.characters.map((c) => (
                 <div class="lk-char" key={c.character}>
+                  <a class="lk-char-link" href={`#/char/${encodeURIComponent(c.character)}`} onClick={onClose}
+                    aria-label={`Character page for ${c.character}`} />
                   <span class="lk-char-glyph" lang="zh-CN">{c.character}</span>
                   <button class="btn quiet lk-write" aria-label={`Practise writing ${c.character}`}
                     onClick={() => api.handwritingAdd({ characters: [c.character], context: target.surface })
