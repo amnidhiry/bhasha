@@ -114,6 +114,7 @@ Almost every hard subproblem already has a mature open component, so the build i
 | Chinese Grammar Wiki | Grammar reference by level | Creative Commons, non-commercial with attribution | Link to points from cards and explanations; don't copy the content in. |
 | CosyVoice | Self-hosted Mandarin TTS | Apache-2.0 | Zero-shot voice cloning gives multiple voices for multi-speaker listening. Needs a GPU for reasonable speed. |
 | FunASR (Paraformer-zh, SenseVoice) | Mandarin speech recognition | Toolkit MIT; models under a separate model license | Mandarin ASR with timestamps, CPU deployment supported. Whisper is the fallback. |
+| OwlLuna | iPad handwriting surface (PencilKit canvas, Pencil gestures, zoom window, on-device handwriting recognition) | MIT | A complete open-source iPad notes app on Apple frameworks only, targeting iPadOS 18. Borrow canvas and input modules; its SM-2-style flashcard scheduler is not used (FSRS everywhere). |
 | tonara, ToneNet, tone.me | Tone classification references | tonara MIT | tonara uses pYIN pitch tracking plus a small MLP, reporting about 93.7% on single syllables. Port the approach to Python for per-syllable tone feedback. |
 
 "Verify" marks licenses not confirmed from a primary page; check them before copying code.
@@ -134,7 +135,7 @@ Every module starts from an existing repo; we write only the glue, the learner m
 | Dictionary | CC-CEDICT | Data import script into its own table | Parser (small; format is one line per entry) |
 | Characters and strokes | Make Me a Hanzi | Data import (dictionary.txt and graphics.txt) | Component index ("characters containing X") |
 | Handwriting on web | Hanzi Writer | npm; its quiz mode already grades strokes | Map its mistake counts to an FSRS rating |
-| Handwriting on iOS | Make Me a Hanzi stroke medians + PencilKit | Same data the web uses | Stroke matcher in Swift (the one real piece of new algorithm work) |
+| Handwriting on iPadOS and iOS | OwlLuna (MIT, SwiftUI + PencilKit, iPadOS 18) for the writing surface; Make Me a Hanzi stroke medians for grading | Copy its PencilKit canvas setup (Pencil-only drawing policy with palm rejection, `UIPencilInteraction` double-tap and squeeze), zoom window for writing small, and Vision handwriting-to-text, with attribution. Do not fork the notes app | Stroke matcher in Swift, ported from Hanzi Writer's MIT matcher rather than written from scratch. Vision with `zh-Hans` only as a coarse "is this the right character" check, since it reads the finished image and cannot judge stroke order or direction |
 | HSK lists | complete-hsk-vocabulary (MIT) + krmanik/HSK-3.0 | Data import | Reconcile against the November 2025 syllabus |
 | Example sentences | Tatoeba per-language export (cmn sentences file) plus links file for translations | Data import with per-sentence attribution | Join script |
 | Reader import ideas | LinguaCafe (GPL-3.0) | Read only; GPL code is not copied into our codebase | Our own importers for EPUB, SRT and Jellyfin subtitles |
@@ -142,7 +143,7 @@ Every module starts from an existing repo; we write only the glue, the learner m
 | Speech | CosyVoice, FunASR | Their published Docker or Python setups, as a separate service | Thin HTTP wrapper |
 | Arabic, Bengali packs | CAMeL Tools, BNLP | pip, inside each pack | Pack adapters only |
 
-**Net new code:** the learner model and coverage calculation, the generation and repair loop, the language-pack interface, the import pipeline, the iOS stroke matcher, and the UI. Everything else is a dependency or a data import, which keeps the build sessions focused on the parts no repo already does.
+**Net new code:** the learner model and coverage calculation, the generation and repair loop, the language-pack interface, the import pipeline, the Swift port of the stroke matcher, and the UI. Everything else is a dependency or a data import, which keeps the build sessions focused on the parts no repo already does.
 
 ### Design skills for the build sessions
 
@@ -289,7 +290,7 @@ Handwriting is a first-class daily practice, not an optional extra. Writing char
 - **Progression per character:** watch the stroke animation, trace, write with hints, then write from recall given only meaning and pinyin.
 - **Grading:** strokes are compared to Make Me a Hanzi stroke medians for order, direction and shape. The score maps to an FSRS rating (Again, Hard, Good, Easy), so writing retention is scheduled like any other skill.
 - **What to write:** the official handwriting list by HSK level first, then characters from your own known words, ordered by frequency. You can add any character.
-- **Clients:** Hanzi Writer quizzes in the PWA; PencilKit capture with the same stroke data on iPad and iPhone.
+- **Clients:** Hanzi Writer quizzes in the PWA; on iPad and iPhone, a PencilKit writing surface adapted from OwlLuna (Pencil-only with palm rejection, double-tap to undo a stroke, zoom window) feeding a Swift port of Hanzi Writer's stroke matcher, with the same Make Me a Hanzi stroke data. Each `PKStroke` path is resampled and compared with the character's stroke medians for order, direction and shape.
 - **Daily writing session:** 5–10 minutes of due handwriting cards plus writing two or three sentences from today's text from dictation.
 
 ### Everyday communication
@@ -365,7 +366,7 @@ The native client is one multiplatform SwiftUI app with three targets sharing a 
 | Target | Role | Platform-specific work |
 |---|---|---|
 | iOS (iPhone) | Daily driver: reviews, short reading sessions, tone shadowing on the go | Compact reader layout, microphone capture for tone lab, finger handwriting on a PencilKit canvas, widgets for due-card count (no streaks) |
-| iPadOS | Handwriting and long reading | Apple Pencil handwriting via PencilKit with pressure and stroke timing, split view (reader beside dictionary or journal), keyboard shortcuts for review, Stage Manager friendly |
+| iPadOS | Handwriting and long reading | Apple Pencil handwriting via PencilKit with pressure and stroke timing (canvas and Pencil gestures adapted from OwlLuna), split view (reader beside dictionary or journal), keyboard shortcuts for review, Stage Manager friendly |
 | macOS | Desk sessions: importing, long reads, journal writing, tutor | Native macOS SwiftUI target (not Catalyst) with menus, keyboard-first review, drag-and-drop import of EPUB/SRT, pinyin IME for journal and tutor. Handwriting via trackpad or mouse on a custom SwiftUI stroke canvas feeding the same matcher, since PencilKit's drawing canvas is iOS/iPadOS only |
 
 - **Shared code:** models, networking, offline review queue, FSRS, stroke matcher and Make Me a Hanzi stroke data live in one Swift package; targets hold only views and input handling.
@@ -455,7 +456,7 @@ The medical track starts only after the core reaches HSK 3 to 4, and a second la
 
 **Standards:** HSK Lord — HSK 3.0 guide (November 2025 syllabus); CTI — Medical Chinese Test, MCT syllabus announcement, MCT prep levels
 
-**Tools and data:** LinguaCafe, Lute v3, lute3-mandarin; jieba, g2pM, g2pW; CC-CEDICT, Make Me a Hanzi, Hanzi Writer; complete-hsk-vocabulary, krmanik/HSK-3.0; Tone Perfect, tonara, ToneNet; CosyVoice, FunASR; Chinese Grammar Wiki; MMeSH (NaCTeM), UBC medical Mandarin phrasebook; CAMeL Tools, BNLP; Claude API pricing
+**Tools and data:** OwlLuna (github.com/owaisazmal/OwlLuna); LinguaCafe, Lute v3, lute3-mandarin; jieba, g2pM, g2pW; CC-CEDICT, Make Me a Hanzi, Hanzi Writer; complete-hsk-vocabulary, krmanik/HSK-3.0; Tone Perfect, tonara, ToneNet; CosyVoice, FunASR; Chinese Grammar Wiki; MMeSH (NaCTeM), UBC medical Mandarin phrasebook; CAMeL Tools, BNLP; Claude API pricing
 
 **Apps:** Du Chinese, The Chairman's Bao, Migaku and others
 
