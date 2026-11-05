@@ -14,9 +14,10 @@ from app.packs.base import WORD, Token
 NEW, LEARNING, KNOWN, IGNORED = "new", "learning", "known", "ignored"
 
 
-def resolve_units(db: Session, language: str, tokens: list[Token]) -> list[int | None]:
+def resolve_units(db: Session, language: str, tokens: list[Token], create: bool = True) -> list[int | None]:
     """Map word tokens to word units, preferring the reading that matches the
-    pack's context-aware reading. Unseen words get a unit so they can be mined."""
+    pack's context-aware reading. Unseen words get a unit so they can be mined
+    (with create=False they map to None instead: import previews write nothing)."""
     pack = get_pack(language)
     words = {t.surface for t in tokens if t.kind == WORD}
     by_head: dict[str, list[Unit]] = {}
@@ -36,6 +37,9 @@ def resolve_units(db: Session, language: str, tokens: list[Token]) -> list[int |
         unit = next((u for u in cands if u.reading == reading), None)
         if unit is None:
             unit = next((u for u in cands if (u.extra or {}).get("primary_form")), None) or (cands[0] if cands else None)
+        if unit is None and not create:
+            out.append(None)
+            continue
         if unit is None:
             unit = Unit(language=language, type="word", headword=t.surface, reading=reading,
                         extra={"source": "segmenter"})

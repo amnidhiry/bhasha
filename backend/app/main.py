@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
+from app.api import importing
 from app.api import bootcamp, fsrs, speech, sentences, handwriting, jobs, llm, lookup, mine, progress, reviews, texts
 from app.bootstrap import ensure_defaults, warm_packs
 from app.config import get_settings
@@ -23,6 +24,7 @@ app = FastAPI(title="bhasha", version="0.1.0", lifespan=lifespan, docs_url="/api
               openapi_url="/api/openapi.json")
 for r in (reviews.router, texts.router, lookup.router, mine.router, progress.router, llm.router, jobs.router, handwriting.router, bootcamp.router, sentences.router, fsrs.router, speech.router):
     app.include_router(r, prefix="/api")
+app.include_router(importing.router, prefix="/api")
 
 
 @app.get("/health")

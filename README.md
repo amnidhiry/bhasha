@@ -8,6 +8,13 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 
 ### Phase 1 PWA (in progress)
 
+- [x] Importer (Read → Import): paste, a link (article text extracted with trafilatura; http(s) only, 2 MB cap,
+      no private or local addresses unless listed in `BHASHA_IMPORT_ALLOW_HOSTS`), an EPUB chapter or range of
+      chapters (TOC titles, ruby pinyin stripped), SRT/VTT subtitles (timestamps and tags removed, Chinese
+      lines kept from bilingual files, long files split into ~1,500-character parts) and subtitles from your
+      Jellyfin (`BHASHA_JELLYFIN_URL`, `BHASHA_JELLYFIN_API_KEY`). Every source shows "62% known · 3,400
+      characters" before you add it
+
 - [x] Server-side speech: a separate speech service (`speech/`, Kokoro, CPU container on the homelab) that bhasha
       calls over HTTP. Every clip is cached on the homelab; new texts are pre-rendered sentence by sentence in the
       worker; the PWA falls back to the device voice when no host answers. Several hosts can be listed in order,
