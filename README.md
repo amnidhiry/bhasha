@@ -4,9 +4,21 @@ A self-hosted language-learning app built around a precise learner model: FSRS
 state for every word you know, used to rate and generate reading at your level.
 Mandarin is the first language pack. The full design is in [`docs/design.md`](docs/design.md).
 
-## Status: Phase 0 backend
+## Status
 
-Done:
+### Phase 1 PWA (in progress)
+
+- [x] Reader as the home screen: segmented text with ruby pinyin over new and learning words (or all or none),
+      word-status colors (dotted underline new, amber learning), punctuation kept on the line, text size, tone colors
+- [x] Tap lookup sheet: spoken and written tones, HSK level, measure words, meanings, character
+      decomposition with meaning and sound components, add to reviews / I know this / ignore
+- [x] Review screen: meaning, reading and listening cards with context sentence, keyboard 1–4 and space.
+      Ratings go to an offline outbox (client UUIDs) and sync when online
+- [x] Progress: known words and characters, cumulative HSK 3.0 bars, placement marks per level
+- [x] Installable PWA (manifest, icons, service worker caching the app and recent API reads), light and dark
+- [x] Interim audio through the browser's Mandarin voice (built into iOS and macOS) until CosyVoice
+
+### Phase 0 backend
 
 - [x] Docker Compose skeleton (api + Postgres, optional Traefik overlay), Alembic migrations
 - [x] Core schema: `unit`, `unit_relation`, `card`, `review_log`, `exposure`, `text`, `text_token`,
@@ -24,8 +36,7 @@ Done:
 - [x] Mining requires a context sentence or text; placement bulk-marking by HSK level
 - [x] Progress: known words and characters, cumulative HSK coverage, characters read
 
-Next (phase 1): PWA reader and review screens (in a session with the design skills from the
-doc), the LLM gateway and graded-reader generator with its repair loop, the arq worker, the
+Next: ts-fsrs in the PWA so learning steps reschedule offline, the LLM gateway and graded-reader generator with its repair loop, the arq worker, the
 nightly FSRS optimizer, then SUBTLEX-CH and Tatoeba imports, g2pM for polyphones, and the sound bootcamp.
 
 ## Run it
@@ -46,7 +57,12 @@ docker compose up -d --build
 ./ops/import-data.sh
 ```
 
-API docs: http://localhost:8000/docs. For nightly backups, add `ops/backup.sh` to cron.
+The app is at http://localhost:8000/ and the API under `/api` (docs at `/api/docs`). For nightly
+backups, add `ops/backup.sh` to cron.
+
+To install it on iPhone, iPad or Mac (Share, then Add to Home Screen / Add to Dock), serve it over
+HTTPS through Traefik. Browsers only enable the service worker and offline caching in a secure
+context. Over plain `http://<lan-ip>:8000` the app still works, but only online.
 
 ## Develop
 
@@ -55,6 +71,10 @@ cd backend && python -m venv .venv && . .venv/bin/activate && pip install -e '.[
 ```
 
 Without `BHASHA_DATABASE_URL` the API uses SQLite (`bhasha.db`). Run `alembic upgrade head` first.
+
+```bash
+cd web && npm install && npm run dev   # http://localhost:5173, proxies /api to :8000
+```
 
 ## Layout
 
@@ -66,7 +86,13 @@ backend/app/
   packs/base.py     language-pack interface (core never branches on language)
   packs/zh/         jieba segmentation, pinyin + sandhi, split rules
   importers/        hsk, cedict, hanzi
-  api/              reviews, texts, lookup, mine, progress
+  api/              reviews, texts, lookup, mine, progress (mounted under /api)
+web/src/
+  views/            Library, Reader, Review, Progress
+  components/       LookupSheet, Pinyin (tone colors), Sheet, TabBar, Toast
+  outbox.ts         offline review queue with client UUIDs
+  speech.ts         interim browser TTS
+  public/sw.js      service worker
 ```
 
 ## Data licenses

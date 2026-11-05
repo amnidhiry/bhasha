@@ -10,7 +10,8 @@ from app.api.deps import current_user
 from app.config import get_settings
 from app.db import get_db
 from app.learner import _aware, apply_review, is_leech, replay, retrievability
-from app.models import AppUser, Card, ReviewLog
+from app.models import AppUser, Card, CedictEntry, ReviewLog, Unit
+from app.packs.zh.pinyin import numeric_to_marks
 from fsrs import State
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -22,12 +23,25 @@ def day_start(now: datetime) -> datetime:
     return datetime.combine(local.date(), time(0), tz).astimezone(timezone.utc)
 
 
+def meanings_for(db: Session, unit: Unit) -> list[str]:
+    """HSK meanings when present, else CC-CEDICT glosses for the matching reading."""
+    m = (unit.extra or {}).get("meanings")
+    if m:
+        return m
+    entries = list(db.scalars(select(CedictEntry).where(CedictEntry.simplified == unit.headword)))
+    exact = [e for e in entries if e.pinyin.lower().replace("u:", "v") == unit.reading]
+    return [g for e in (exact or entries) for g in e.glosses][:6]
+
+
 class DueCard(BaseModel):
     card_id: int
     unit_id: int
     facet: str
     headword: str
     reading: str
+    reading_display: str
+    meanings: list[str]
+    classifiers: list[str]
     context_sentence: str | None
     due: datetime
     is_new: bool
@@ -79,6 +93,8 @@ def due(limit: int = 50, db: Session = Depends(get_db), user: AppUser = Depends(
         seen_units.add(c.unit_id)
         out.append(DueCard(
             card_id=c.id, unit_id=c.unit_id, facet=c.facet, headword=c.unit.headword, reading=c.unit.reading,
+            reading_display=" ".join(numeric_to_marks(x) for x in c.unit.reading.split()),
+            meanings=meanings_for(db, c.unit), classifiers=(c.unit.extra or {}).get("classifiers", []),
             context_sentence=c.context_sentence, due=_aware(c.due), is_new=is_new, leech=is_leech(c),
             retrievability=retrievability(c, now),
         ))

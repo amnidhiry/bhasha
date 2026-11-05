@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     hsk_version: str = "hsk3-2025"
     # IANA zone that defines "today" for daily caps and the sibling-facet rule.
     timezone: str = "UTC"
+    # Built PWA to serve at / (empty or missing directory = API only).
+    web_dir: str = "web"
 
 
 @lru_cache

@@ -4,7 +4,9 @@ name: bhasha
 
 services:
   api:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
       BHASHA_DATABASE_URL: postgresql+psycopg://bhasha:${POSTGRES_PASSWORD:?set in .env}@db:5432/bhasha

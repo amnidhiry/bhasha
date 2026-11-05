@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 
 
 def _import(client, body="我在银行工作。朋友是医生。"):
-    r = client.post("/texts/import", json={"title": "t", "body": body})
+    r = client.post("/api/texts/import", json={"title": "t", "body": body})
     assert r.status_code == 200, r.text
     return r.json()
 
@@ -20,17 +20,17 @@ def test_import_resolves_units_and_reports_coverage(client):
 
 
 def test_placement_mark_changes_coverage(client):
-    client.post("/units/mark", json={"status": "known", "level_tag": "hsk3-2025:1"})
+    client.post("/api/units/mark", json={"status": "known", "level_tag": "hsk3-2025:1"})
     t = _import(client)
     # 我 在 工作 朋友 known (HSK 1 fixture); 银行 是 医生 not.
     assert abs(t["coverage_at_creation"] - 4 / 7) < 1e-9
-    p = client.get("/progress").json()
+    p = client.get("/api/progress").json()
     assert p["hsk_cumulative"][0] == {"level": "1", "words": 4, "known": 4, "coverage": 1.0}
     assert p["known_characters"] == len(set("我在工作朋友"))
 
 
 def test_lookup(client):
-    r = client.get("/lookup", params={"q": "银行"}).json()
+    r = client.get("/api/lookup", params={"q": "银行"}).json()
     assert r["reading"]["citation_display"] == "yín háng"
     assert r["cedict"][0]["glosses"][0] == "bank"
     assert r["units"][0]["classifiers"] == ["家", "个"]
@@ -40,52 +40,52 @@ def test_lookup(client):
 def test_mine_requires_context(client):
     t = _import(client)
     bank = next(w for w in t["tokens"] if w["surface"] == "银行")
-    assert client.post("/mine", json={"unit_id": bank["unit_id"]}).status_code == 422
-    r = client.post("/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "我在银行工作。"})
+    assert client.post("/api/mine", json={"unit_id": bank["unit_id"]}).status_code == 422
+    r = client.post("/api/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "我在银行工作。"})
     assert [c["facet"] for c in r.json()["created"]] == ["meaning", "reading"]
 
 
 def test_review_flow_sibling_rule_and_idempotent_sync(client):
     t = _import(client)
     bank = next(w for w in t["tokens"] if w["surface"] == "银行")
-    client.post("/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "我在银行工作。"})
+    client.post("/api/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "我在银行工作。"})
 
-    due = client.get("/reviews/due").json()
+    due = client.get("/api/reviews/due").json()
     assert len(due) == 1  # one facet per unit at a time
     card = due[0]
     assert card["is_new"] and card["context_sentence"] == "我在银行工作。"
 
     review = {"id": str(uuid.uuid4()), "card_id": card["card_id"], "rating": 3,
               "reviewed_at": datetime.now(timezone.utc).isoformat()}
-    assert client.post("/reviews", json=[review]).json()["applied"] == [review["id"]]
-    assert client.post("/reviews", json=[review]).json()["duplicates"] == [review["id"]]
+    assert client.post("/api/reviews", json=[review]).json()["applied"] == [review["id"]]
+    assert client.post("/api/reviews", json=[review]).json()["duplicates"] == [review["id"]]
 
     # The sibling facet was not reviewed today, but its unit was: it must wait.
     assert all(d["unit_id"] != bank["unit_id"] or d["card_id"] == card["card_id"]
-               for d in client.get("/reviews/due").json())
+               for d in client.get("/api/reviews/due").json())
 
 
 def test_out_of_order_sync_replays(client):
     t = _import(client)
     bank = next(w for w in t["tokens"] if w["surface"] == "银行")
-    cid = client.post("/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "s",
+    cid = client.post("/api/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "s",
                                      "facets": ["meaning"]}).json()["created"][0]["card_id"]
     now = datetime.now(timezone.utc)
     late = {"id": str(uuid.uuid4()), "card_id": cid, "rating": 3, "reviewed_at": now.isoformat()}
     early = {"id": str(uuid.uuid4()), "card_id": cid, "rating": 3,
              "reviewed_at": (now - timedelta(minutes=20)).isoformat()}
-    client.post("/reviews", json=[late])
-    r = client.post("/reviews", json=[early]).json()
+    client.post("/api/reviews", json=[late])
+    r = client.post("/api/reviews", json=[early]).json()
     assert r["replayed_cards"] == [cid]
 
 
 def test_listening_card_appears_after_review_state(client):
     t = _import(client)
     bank = next(w for w in t["tokens"] if w["surface"] == "银行")
-    cid = client.post("/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "s",
+    cid = client.post("/api/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "s",
                                      "facets": ["meaning"]}).json()["created"][0]["card_id"]
     now = datetime.now(timezone.utc)
-    client.post("/reviews", json=[{"id": str(uuid.uuid4()), "card_id": cid, "rating": 4,
+    client.post("/api/reviews", json=[{"id": str(uuid.uuid4()), "card_id": cid, "rating": 4,
                                    "reviewed_at": now.isoformat()}])
     from sqlalchemy import select
     from app.models import Card
@@ -97,19 +97,19 @@ def test_listening_card_appears_after_review_state(client):
 def test_lookup_of_carded_word_logs_failed_review(client):
     t = _import(client)
     bank = next(w for w in t["tokens"] if w["surface"] == "银行")
-    cid = client.post("/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "s",
+    cid = client.post("/api/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "s",
                                      "facets": ["meaning"]}).json()["created"][0]["card_id"]
-    client.post("/reviews", json=[{"id": str(uuid.uuid4()), "card_id": cid, "rating": 3,
+    client.post("/api/reviews", json=[{"id": str(uuid.uuid4()), "card_id": cid, "rating": 3,
                                    "reviewed_at": datetime.now(timezone.utc).isoformat()}])
-    r = client.get("/lookup", params={"q": "银行", "log": True, "text_id": t["id"]}).json()
+    r = client.get("/api/lookup", params={"q": "银行", "log": True, "text_id": t["id"]}).json()
     assert r["logged"] == "failed_review"
 
 
 def test_finish_logs_exposures(client):
     t = _import(client)
-    r = client.post(f"/texts/{t['id']}/finish").json()
+    r = client.post(f"/api/texts/{t['id']}/finish").json()
     assert r["exposures"] == 7
-    assert client.get("/progress").json()["texts_finished"] == 1
+    assert client.get("/api/progress").json()["texts_finished"] == 1
 
 
 def test_importers_are_idempotent(client):
@@ -124,3 +124,26 @@ def test_importers_are_idempotent(client):
         import_hsk(s, fx / "hsk_sample.json")
         import_cedict(s, fx / "cedict_sample.u8")
         assert s.scalar(select(func.count()).select_from(Unit)) == before
+
+
+def test_due_card_has_answer_side(client):
+    t = _import(client)
+    bank = next(w for w in t["tokens"] if w["surface"] == "银行")
+    client.post("/api/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "s"})
+    card = client.get("/api/reviews/due").json()[0]
+    assert card["meanings"] == ["bank"] and card["reading_display"] == "yín háng"
+    assert card["classifiers"] == ["家", "个"]
+
+
+def test_learning_cards_are_not_known_yet(client):
+    t = _import(client)
+    bank = next(w for w in t["tokens"] if w["surface"] == "银行")
+    cid = client.post("/api/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "s",
+                                         "facets": ["meaning"]}).json()["created"][0]["card_id"]
+    now = datetime.now(timezone.utc)
+    client.post("/api/reviews", json=[{"id": str(uuid.uuid4()), "card_id": cid, "rating": 3,
+                                       "reviewed_at": now.isoformat()}])
+    assert client.get("/api/progress").json()["known_words"] == 0  # still in learning steps
+    client.post("/api/reviews", json=[{"id": str(uuid.uuid4()), "card_id": cid, "rating": 4,
+                                       "reviewed_at": (now + timedelta(minutes=1)).isoformat()}])
+    assert client.get("/api/progress").json()["known_words"] == 1  # graduated, R ~ 1

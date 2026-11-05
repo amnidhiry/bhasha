@@ -106,7 +106,11 @@ def known_unit_ids(db: Session, user_id: int, language: str, now: datetime | Non
             Card.user_id == user_id, Card.facet == "meaning", Unit.language == language
         )
     )
-    known.update(c.unit_id for c in cards if retrievability(c, now) >= threshold)
+    # Only graduated cards count: a card in its first learning steps has R near 1.0
+    # minutes after being seen, which says nothing about tomorrow.
+    known.update(
+        c.unit_id for c in cards if c.state == int(State.Review) and retrievability(c, now) >= threshold
+    )
     return known
 
 

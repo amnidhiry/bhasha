@@ -7,3 +7,6 @@ __pycache__/
 data/
 build/
 *.egg-info/
+node_modules/
+web/dist/
+backups/
