@@ -20,6 +20,15 @@ class Settings(BaseSettings):
     timezone: str = "UTC"
     # Built PWA to serve at / (empty or missing directory = API only).
     web_dir: str = "web"
+    # Encrypts stored sign-in tokens and API keys. `openssl rand -hex 32`.
+    secret_key: str = ""
+    # LLM gateway safety cap: model calls per day across all features.
+    llm_max_calls_per_day: int = 300
+    # Loopback redirect for "Sign in with ChatGPT". Nothing needs to listen there:
+    # you paste the address the browser lands on back into the app.
+    chatgpt_redirect_port: int = 1455
+    chatgpt_auth_url: str = "https://auth.openai.com"
+    chatgpt_api_url: str = "https://api.openai.com/v1"
 
 
 @lru_cache

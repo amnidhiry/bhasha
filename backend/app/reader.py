@@ -105,6 +105,7 @@ def serialize_text(db: Session, user_id: int, text: Text) -> dict:
         "coverage_at_creation": text.coverage_at_creation,
         "coverage_now": coverage(eligible, known, ignored),
         "finished_at": text.finished_at,
+        "meta": text.meta or {},
         "tokens": tokens,
     }
 

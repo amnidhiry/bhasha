@@ -6,6 +6,12 @@ import pytest
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
+@pytest.fixture(autouse=True)
+def _secret_key(monkeypatch):
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "secret_key", "test-secret-key")
+
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
     url = f"sqlite:///{tmp_path / 'test.db'}"

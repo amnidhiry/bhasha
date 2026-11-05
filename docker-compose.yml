@@ -11,6 +11,8 @@ services:
     environment:
       BHASHA_DATABASE_URL: postgresql+psycopg://bhasha:${POSTGRES_PASSWORD:?set in .env}@db:5432/bhasha
       BHASHA_TIMEZONE: ${BHASHA_TIMEZONE:-UTC}
+      BHASHA_SECRET_KEY: ${BHASHA_SECRET_KEY:-}
+      BHASHA_LLM_MAX_CALLS_PER_DAY: ${BHASHA_LLM_MAX_CALLS_PER_DAY:-300}
     volumes:
       - ./data:/data:ro           # source datasets for the importers
     depends_on:

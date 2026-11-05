@@ -8,6 +8,14 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 
 ### Phase 1 PWA (in progress)
 
+- [x] Graded-reader generator: "Write me a text" with topic, kind (story, dialogue, everyday, news), length
+      and words to practise. Every word is checked against what you know plus an HSK level pool, with up to
+      two rewrites naming the exact words to replace. The reader adds English per sentence, a flag-as-unnatural
+      button and comprehension questions
+- [x] LLM gateway with **Sign in with ChatGPT** (your Plus or Pro plan, no API key; adapted from SurfSense,
+      Apache-2.0) or any OpenAI-compatible endpoint (LM Studio, API key). Tokens are encrypted at rest; there's
+      a daily call cap and per-call usage logging
+
 - [x] Reader as the home screen: segmented text with ruby pinyin over new and learning words (or all or none),
       word-status colors (dotted underline new, amber learning), punctuation kept on the line, text size, tone colors
 - [x] Tap lookup sheet: spoken and written tones, HSK level, measure words, meanings, character
@@ -39,13 +47,13 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 - [x] Mining requires a context sentence or text; placement bulk-marking by HSK level
 - [x] Progress: known words and characters, cumulative HSK coverage, characters read
 
-Next: the LLM gateway and graded-reader generator with its repair loop, the arq worker, the
-nightly FSRS optimizer, then SUBTLEX-CH and Tatoeba imports, g2pM for polyphones, and the sound bootcamp.
+Next: the arq worker (so generation runs in the background), the handwriting track (Hanzi Writer with Apple
+Pencil), the nightly FSRS optimizer, then SUBTLEX-CH and Tatoeba imports, g2pM for polyphones, and the sound bootcamp.
 
 ## Run it
 
 ```bash
-cp .env.example .env   # set POSTGRES_PASSWORD
+cp .env.example .env   # set POSTGRES_PASSWORD and BHASHA_SECRET_KEY (openssl rand -hex 32)
 ```
 
 ```bash
@@ -63,7 +71,12 @@ docker compose up -d --build
 The app is at http://localhost:8000/ and the API under `/api` (docs at `/api/docs`). For nightly
 backups, add `ops/backup.sh` to cron.
 
-To install it on iPhone, iPad or Mac (Share, then Add to Home Screen / Add to Dock), serve it over
+To generate texts, open Progress → Text generation → Sign in with ChatGPT. Approve bhasha in the tab that
+opens. That tab then fails to load an `http://127.0.0.1:1455/callback?...` address, which is expected: copy that
+address and paste it back into bhasha. OpenAI calls Sign in with ChatGPT a preview, and usage counts toward your
+plan's limits.
+
+There are no native apps: the PWA is the app on iPhone, iPad and Mac. To install it on iPhone, iPad or Mac (Share, then Add to Home Screen / Add to Dock), serve it over
 HTTPS through Traefik. Browsers only enable the service worker and offline caching in a secure
 context. Over plain `http://<lan-ip>:8000` the app still works, but only online.
 

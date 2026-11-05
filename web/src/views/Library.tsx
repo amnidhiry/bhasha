@@ -1,6 +1,7 @@
 import { useEffect, useState } from "preact/hooks";
 import { api, type TextSummary } from "../api";
 import { go } from "../router";
+import { GenerateForm } from "../components/GenerateForm";
 import { toast } from "../components/Toast";
 import { pct } from "../format";
 
@@ -13,6 +14,7 @@ export function Library() {
   const [texts, setTexts] = useState<TextSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -37,9 +39,14 @@ export function Library() {
     <main class="page">
       <header class="page-head">
         <h1>Read</h1>
-        <button class="btn primary" onClick={() => setAdding((a) => !a)} aria-expanded={adding}>
-          {adding ? "Cancel" : "Paste text"}
-        </button>
+        <span class="row tight">
+          <button class="btn" onClick={() => { setAdding((a) => !a); setGenerating(false); }} aria-expanded={adding}>
+            {adding ? "Cancel" : "Paste"}
+          </button>
+          <button class="btn primary" onClick={() => { setGenerating((g) => !g); setAdding(false); }} aria-expanded={generating}>
+            Write me a text
+          </button>
+        </span>
       </header>
 
       {adding && (
@@ -60,8 +67,10 @@ export function Library() {
         </form>
       )}
 
+      {generating && <GenerateForm onCancel={() => setGenerating(false)} />}
+
       {error && <p class="error">Can't reach the server: {error}</p>}
-      {texts && texts.length === 0 && !adding && (
+      {texts && texts.length === 0 && !adding && !generating && (
         <section class="empty card">
           <p class="empty-glyph" lang="zh-CN" aria-hidden="true">读</p>
           <h2>Start with a short text</h2>

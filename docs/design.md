@@ -13,7 +13,7 @@ We are building a self-hosted Mandarin app that knows every word, character and 
 - **For whom:** a native English speaker (you), then family, starting from zero Mandarin, with all explanations and translations in English, aiming at HSK 3.0 levels 1–4 and real-world reading and conversation.
 - **Core bet:** a precise learner model (FSRS state per word, character and component) plus LLM generation gives personalized comprehensible input that no off-the-shelf app offers.
 - **Core loop:** read or listen to level-matched content, tap to look up and mine unknown words, review them with FSRS, then use them in writing and speaking that feeds errors back into review.
-- **Stack:** FastAPI + Postgres backend on the homelab, PWA first, then one native SwiftUI app for iOS, iPadOS and macOS, built on open data (CC-CEDICT, Make Me a Hanzi, HSK 3.0 lists) and open libraries (FSRS, jieba, pypinyin).
+- **Stack:** FastAPI + Postgres backend on the homelab and one installable PWA for iPhone, iPad and Mac (no native apps planned), built on open data (CC-CEDICT, Make Me a Hanzi, HSK 3.0 lists) and open libraries (FSRS, jieba, pypinyin). Model calls use your ChatGPT plan through Sign in with ChatGPT, not a paid API key.
 - **First milestone:** HSK 1–2 vocabulary with tones and characters, a graded-reader generator, and an FSRS review queue, all usable on your phone.
 
 Three goal tracks sit on the core: daily handwriting practice, everyday communication, and medical Chinese aimed at the Medical Chinese Test. Language-specific logic lives in swappable language packs, so Bengali and Arabic can follow Mandarin without rebuilding the core.
@@ -98,14 +98,14 @@ Almost every hard subproblem already has a mature open component, so the build i
 
 | Component | Use | License | Notes |
 |---|---|---|---|
-| py-fsrs | Scheduling on the server | MIT | Implements FSRS-6 with 21 parameters. Sibling ports exist for TypeScript and Swift (OSR), so the PWA and iOS client can schedule offline. |
+| py-fsrs | Scheduling on the server | MIT | Implements FSRS-6 with 21 parameters. The PWA mirrors it offline with ts-fsrs pinned to FSRS-6, checked by a parity test. |
 | srs-benchmark | Evaluation | — | Reuse its metrics (log loss, RMSE bins) to check our parameters once the review log grows. |
 | jieba | Word segmentation | MIT | Supports custom dictionaries. Add Lute-style split rules to fix over-merged words. |
 | pypinyin | Pinyin, tone numbers | MIT | Fast default. Scored 86.1% on polyphone disambiguation in the CPP benchmark (g2pM). |
 | g2pM / g2pW | Polyphone disambiguation | Verify | g2pM reached 97.3% on the same test with a 1.7 MB model. g2pW (BERT-based) is stronger but heavier. Run only on polyphonic characters. |
 | CC-CEDICT | Dictionary | CC BY-SA | About 124,000 entries. Share-alike: keep it in its own table and attribute it. |
 | Make Me a Hanzi | Stroke order, decomposition, radicals, etymology | Graphics: Arphic Public License; dictionary file separately licensed | Over 9,000 characters with IDS decompositions and per-stroke component mapping, PRC stroke order. |
-| Hanzi Writer | Stroke animation and writing quizzes in the PWA | MIT (code), Arphic PL (data) | Drop-in for handwriting cards on web. On iOS, use the same stroke data with PencilKit. |
+| Hanzi Writer | Stroke animation and writing quizzes in the PWA | MIT (code), Arphic PL (data) | Drop-in for handwriting cards, with Apple Pencil through Safari's pointer events. |
 | complete-hsk-vocabulary | HSK 2.0 and 3.0 word lists in JSON | MIT | Includes radicals, classifiers and parts of speech. Check it reflects the November 2025 syllabus before relying on level tags. |
 | krmanik/HSK-3.0 | HSK 3.0 character, handwriting and grammar lists | See repo | OCR of the 2021 Ministry of Education PDF; use for grammar points and handwriting list, cross-checked against 2025 changes. |
 | SUBTLEX-CH | Word and character frequency | Research dataset | Subtitle-based frequencies (Cai & Brysbaert, 2010), used to order words beyond the HSK lists. |
@@ -114,7 +114,7 @@ Almost every hard subproblem already has a mature open component, so the build i
 | Chinese Grammar Wiki | Grammar reference by level | Creative Commons, non-commercial with attribution | Link to points from cards and explanations; don't copy the content in. |
 | CosyVoice | Self-hosted Mandarin TTS | Apache-2.0 | Zero-shot voice cloning gives multiple voices for multi-speaker listening. Needs a GPU for reasonable speed. |
 | FunASR (Paraformer-zh, SenseVoice) | Mandarin speech recognition | Toolkit MIT; models under a separate model license | Mandarin ASR with timestamps, CPU deployment supported. Whisper is the fallback. |
-| OwlLuna | iPad handwriting surface (PencilKit canvas, Pencil gestures, zoom window, on-device handwriting recognition) | MIT | A complete open-source iPad notes app on Apple frameworks only, targeting iPadOS 18. Borrow canvas and input modules; its SM-2-style flashcard scheduler is not used (FSRS everywhere). |
+| OwlLuna | Reference for Apple Pencil handwriting UX (writing surface, Pencil gestures, zoom window) | MIT | An open-source iPad notes app on Apple frameworks. With the app PWA-only, it is a design reference for the handwriting screen, not code we ship. |
 | tonara, ToneNet, tone.me | Tone classification references | tonara MIT | tonara uses pYIN pitch tracking plus a small MLP, reporting about 93.7% on single syllables. Port the approach to Python for per-syllable tone feedback. |
 
 "Verify" marks licenses not confirmed from a primary page; check them before copying code.
@@ -128,14 +128,13 @@ Every module starts from an existing repo; we write only the glue, the learner m
 | Server scheduling and optimizer | py-fsrs | `pip install "fsrs[optimizer]"`; its Optimizer fits your parameters and optimal retention from review logs | Mapping our card and review tables to its Card and ReviewLog objects; nightly re-fit job |
 | PWA offline scheduling | ts-fsrs (MIT) | npm dependency, loaded with the server's fitted parameters | Sync queue; server stays the source of truth |
 | PWA reference code | ts-fsrs-demo and spaced | Read for review-screen and data-layer patterns; borrow what fits | Our own UI |
-| iOS scheduling | swift-fsrs (official, FSRS-5) or bitbemol/swift-fsrs (unofficial FSRS-6, parity-tested against ts-fsrs) | Swift Package Manager | Prefer the FSRS-6 port so all clients run the same algorithm version; re-check before phase 4 |
 | Segmentation | jieba | pip; load HSK lists and your known words as a user dictionary | Adapt Lute's split-rule file format for over-merged words |
 | Pinyin | pypinyin (MIT) | pip; supports heteronyms and custom phrase dictionaries | Tone-sandhi rules layered on top (third tone, 一, 不) |
 | Polyphones | g2pM | pip; call only for polyphonic characters | Nothing beyond the call site |
 | Dictionary | CC-CEDICT | Data import script into its own table | Parser (small; format is one line per entry) |
 | Characters and strokes | Make Me a Hanzi | Data import (dictionary.txt and graphics.txt) | Component index ("characters containing X") |
 | Handwriting on web | Hanzi Writer | npm; its quiz mode already grades strokes | Map its mistake counts to an FSRS rating |
-| Handwriting on iPadOS and iOS | OwlLuna (MIT, SwiftUI + PencilKit, iPadOS 18) for the writing surface; Make Me a Hanzi stroke medians for grading | Copy its PencilKit canvas setup (Pencil-only drawing policy with palm rejection, `UIPencilInteraction` double-tap and squeeze), zoom window for writing small, and Vision handwriting-to-text, with attribution. Do not fork the notes app | Stroke matcher in Swift, ported from Hanzi Writer's MIT matcher rather than written from scratch. Vision with `zh-Hans` only as a coarse "is this the right character" check, since it reads the finished image and cannot judge stroke order or direction |
+| Handwriting on iPad and iPhone | Hanzi Writer quiz mode in the PWA, Make Me a Hanzi stroke data | npm; pen input via Pointer Events (`pointerType: "pen"`, pressure, tilt) | Ignore touch while a pen is down for palm rejection; map Hanzi Writer's mistake counts to an FSRS rating. OwlLuna's iPad writing surface is the UX reference |
 | HSK lists | complete-hsk-vocabulary (MIT) + krmanik/HSK-3.0 | Data import | Reconcile against the November 2025 syllabus |
 | Example sentences | Tatoeba per-language export (cmn sentences file) plus links file for translations | Data import with per-sentence attribution | Join script |
 | Reader import ideas | LinguaCafe (GPL-3.0) | Read only; GPL code is not copied into our codebase | Our own importers for EPUB, SRT and Jellyfin subtitles |
@@ -143,7 +142,7 @@ Every module starts from an existing repo; we write only the glue, the learner m
 | Speech | CosyVoice, FunASR | Their published Docker or Python setups, as a separate service | Thin HTTP wrapper |
 | Arabic, Bengali packs | CAMeL Tools, BNLP | pip, inside each pack | Pack adapters only |
 
-**Net new code:** the learner model and coverage calculation, the generation and repair loop, the language-pack interface, the import pipeline, the Swift port of the stroke matcher, and the UI. Everything else is a dependency or a data import, which keeps the build sessions focused on the parts no repo already does.
+**Net new code:** the learner model and coverage calculation, the generation and repair loop, the language-pack interface, the import pipeline, the Sign in with ChatGPT client, and the UI.
 
 ### Design skills for the build sessions
 
@@ -155,11 +154,8 @@ Installing a few agent design skills before the UI work keeps the app from looki
 | Anthropic frontend-design | Baseline rules for distinctive, non-templated web UI; the most-installed design skill. | PWA | — |
 | Impeccable | Builds on frontend-design with seven references (type, color, spacing, motion and more) and commands like critique, audit and polish; writes a project DESIGN.md. | PWA critique and polish passes; DESIGN.md as the shared spec for web and iOS | Apache-2.0 |
 | UI UX Pro Max | Generates a design system (style, palette, type) from a project description. | One-time design-system kickoff | MIT |
-| Apple HIG skills | Apple Human Interface Guidelines as 14 skills. | SwiftUI client | MIT (skill files) |
-| SwiftUI Agent Skill (by Antoine van der Lee) | SwiftUI state, composition, performance, accessibility and Liquid Glass. | SwiftUI client | MIT |
-| Swift Agent Skills index | Paul Hudson's curated list of Swift and Apple-platform skills. | Finding more iOS skills later | — |
 
-**Suggested setup:** for the PWA, frontend-design plus Impeccable, with one UI UX Pro Max run at the start to draft DESIGN.md. For iOS, Apple HIG skills plus the SwiftUI skill, reusing the same DESIGN.md. Use the Appllama research method on both, with or without its MCP.
+**Suggested setup:** frontend-design plus Impeccable, with one UI UX Pro Max run at the start to draft DESIGN.md. Use the Appllama research method, with or without its MCP. (The SwiftUI and Apple HIG skills dropped out with the native apps.)
 
 ## Product design
 
@@ -257,27 +253,24 @@ The known-word list and style rubric sit at the front of the prompt so prompt ca
 | Explain this | "Why 了 here?" or "How is 才 different from 就?" on any sentence, answered at your level. | Links the answer to the relevant Grammar Wiki point. |
 | Pre-teaching texts | Writes a short easy text that uses the hardest words of an imported article before you read it. | Picks those words by frequency and coverage gap. |
 | Leech help | Writes a mnemonic tied to the character's actual components. | Supplies the decomposition from Make Me a Hanzi so the mnemonic matches the real parts. |
-| Batch enrichment | Writes example sentences and short usage notes for HSK words, offline. | Runs through the Batch API at half price; results are reviewed by sampling. |
+| Batch enrichment | Writes example sentences and short usage notes for HSK words, offline. | Runs slowly in the background within the plan's usage limits (the plan has no batch discount); results are reviewed by sampling. |
 
 ### Model choice and cost
 
-Current API prices are $2 input and $10 output per million tokens for Claude Sonnet 5.5, and $0.10 and $0.50 for Claude Haiku 5.5. Batch processing halves both, and cache reads on Sonnet 5.5 cost $0.10 per million.
+Model calls go through **Sign in with ChatGPT**, OpenAI's program that lets open-source apps use a person's ChatGPT Plus or Pro plan instead of an API key (developers.openai.com/siwc/token-sharing-open-source). The implementation follows SurfSense's (Apache-2.0):
 
-| Task | Model | Rough cost each |
-|---|---|---|
-| Story or dialogue (~10k input, ~1.5k output) | Sonnet 5.5 | About 3–4 cents uncached, closer to 2 cents with the word list cached |
-| Journal correction, tutor turn | Sonnet 5.5 | About 1–2 cents |
-| Tagging, classification, simple glossing | Haiku 5.5 | A small fraction of a cent |
-| Example sentences for 5,000 words | Sonnet 5.5, batched | A few dollars, one time |
-
-At three generated texts, one journal entry and a short tutor session a day, expect roughly $3–8 a month. Set a hard spend limit in the Console and log token use per feature.
+- **Sign-in:** OAuth with PKCE. The first sign-in registers the install dynamically; the redirect goes to a loopback address, and on the homelab you paste that address back into the app. Tokens are stored encrypted with `BHASHA_SECRET_KEY` and refreshed before expiry.
+- **Calls:** the Responses API with `store: false`, streaming, and JSON-schema structured output. The plan refuses some fields (temperature, max output tokens, prompt-cache retention, previous response id and others), so the gateway never sends them.
+- **Cost:** no per-token charge; usage counts against the plan's own limits. A daily call cap (default 300) guards against loops, and every call is logged to `llm_call` with its token counts.
+- **Alternatives:** any OpenAI-compatible endpoint, such as LM Studio on the homelab or an API key, through the same gateway. Use one for bulk jobs if the plan's limits get in the way.
+- **Status:** OpenAI calls this a preview. If a step starts failing, check its docs first.
 
 ### Guardrails
 
 - Pinyin, tones, glosses and stroke data always come from local sources, never from the model.
 - Every generated sentence has a "flag as unnatural" button; flagged sentences are excluded from future context and reviewed.
 - Generated text is labeled as generated. Imported and Tatoeba sentences remain the reference for naturalness.
-- The model runs behind one internal interface, so a self-hosted model on your LM Studio setup can replace it for cheap tasks later.
+- Every model call goes through one gateway, so the ChatGPT plan, LM Studio or an API key can be swapped without touching features.
 
 ## Goal tracks
 
@@ -290,7 +283,7 @@ Handwriting is a first-class daily practice, not an optional extra. Writing char
 - **Progression per character:** watch the stroke animation, trace, write with hints, then write from recall given only meaning and pinyin.
 - **Grading:** strokes are compared to Make Me a Hanzi stroke medians for order, direction and shape. The score maps to an FSRS rating (Again, Hard, Good, Easy), so writing retention is scheduled like any other skill.
 - **What to write:** the official handwriting list by HSK level first, then characters from your own known words, ordered by frequency. You can add any character.
-- **Clients:** Hanzi Writer quizzes in the PWA; on iPad and iPhone, a PencilKit writing surface adapted from OwlLuna (Pencil-only with palm rejection, double-tap to undo a stroke, zoom window) feeding a Swift port of Hanzi Writer's stroke matcher, with the same Make Me a Hanzi stroke data. Each `PKStroke` path is resampled and compared with the character's stroke medians for order, direction and shape.
+- **Clients:** Hanzi Writer quizzes in the PWA on every device. On iPad, Apple Pencil arrives as pointer events with pressure and tilt; the handwriting screen ignores finger touches while a pen is down (palm rejection) and offers a zoomed writing box, taking OwlLuna's iPad writing surface as the UX reference.
 - **Daily writing session:** 5–10 minutes of due handwriting cards plus writing two or three sentences from today's text from dictation.
 
 ### Everyday communication
@@ -321,9 +314,9 @@ One FastAPI backend owns the learner model and all language logic; clients are t
 ```
   PWA (ts-fsrs offline) ─┐
                          ├──>  API (FastAPI) ──> Postgres
-  SwiftUI iOS/iPadOS/macOS (swift-fsrs) ──┘        │   │
+  (installed on iPhone, iPad, Mac) ───────┘
                                   │   ├──> Language pack (zh: jieba, pypinyin, CC-CEDICT, MMAH)
-                                  │   └──> LLM gateway (Anthropic API / LM Studio)
+                                  │   └──> LLM gateway (ChatGPT plan / LM Studio / API key)
                                   └──> Worker (Redis) ──> Speech (CosyVoice, FunASR, pYIN)
 ```
 
@@ -338,8 +331,8 @@ Clients talk only to the API; the API calls a language pack for anything languag
 | Worker | Generation jobs, imports, audio rendering, batch enrichment, nightly FSRS re-fit | Arq or Celery on Redis |
 | Language pack: zh | Segmentation, pinyin and sandhi, dictionary, decomposition, HSK levels | jieba, pypinyin + g2pM, CC-CEDICT, Make Me a Hanzi |
 | Speech | TTS for texts and cards; ASR and pitch tracking for speaking and tone feedback | CosyVoice, FunASR or Whisper, pYIN; GPU optional, CPU fallback for ASR |
-| LLM gateway | One interface for every model call, with caching, cost logging and spend caps | Anthropic API first; local model (LM Studio) as a drop-in for cheap tasks |
-| Clients | Reader, review, tone lab, handwriting, tutor | PWA first (with ts-fsrs for offline reviews), then a multiplatform SwiftUI app for iOS, iPadOS and macOS (swift-fsrs, PencilKit); see Apple platform targets |
+| LLM gateway | One interface for every model call, with token refresh, usage logging and a daily call cap | Sign in with ChatGPT (plan usage, Responses API) first; any OpenAI-compatible endpoint (LM Studio, or an API key) as an alternative |
+| Clients | Reader, review, tone lab, handwriting, tutor | One PWA (Preact + Vite) with ts-fsrs for offline reviews, installed to the home screen or Dock on iPhone, iPad and Mac |
 
 ### Language packs
 
@@ -359,20 +352,19 @@ Each pack implements the same interface, so the core never branches on language.
 
 The pack boundary is the main reason not to fork a Mandarin-only tool. The data model below stores knowledge units as generic rows with a pack-defined type, so roots and conjuncts fit beside characters and components.
 
-### Apple platform targets
+### Apple devices: one PWA
 
-The native client is one multiplatform SwiftUI app with three targets sharing a Swift package for the API client, sync queue, swift-fsrs scheduling and the stroke matcher. Each target differs only where the input device or screen changes the experience.
+There are no native apps. The PWA installs to the Home Screen on iPhone and iPad and to the Dock on Mac (Safari, Share, then Add to Home Screen or Add to Dock), and covers each device's role:
 
-| Target | Role | Platform-specific work |
+| Device | Role | How the PWA covers it |
 |---|---|---|
-| iOS (iPhone) | Daily driver: reviews, short reading sessions, tone shadowing on the go | Compact reader layout, microphone capture for tone lab, finger handwriting on a PencilKit canvas, widgets for due-card count (no streaks) |
-| iPadOS | Handwriting and long reading | Apple Pencil handwriting via PencilKit with pressure and stroke timing (canvas and Pencil gestures adapted from OwlLuna), split view (reader beside dictionary or journal), keyboard shortcuts for review, Stage Manager friendly |
-| macOS | Desk sessions: importing, long reads, journal writing, tutor | Native macOS SwiftUI target (not Catalyst) with menus, keyboard-first review, drag-and-drop import of EPUB/SRT, pinyin IME for journal and tutor. Handwriting via trackpad or mouse on a custom SwiftUI stroke canvas feeding the same matcher, since PencilKit's drawing canvas is iOS/iPadOS only |
+| iPhone | Daily driver: reviews, short reads, tone shadowing | Compact layout; offline reviews with ts-fsrs; microphone through `getUserMedia` for the tone lab; finger handwriting in Hanzi Writer |
+| iPad | Handwriting and long reading | Apple Pencil as pointer events (`pointerType: "pen"`, pressure, tilt) feeding Hanzi Writer; touches ignored while a pen is down; the lookup panel centres on wide screens |
+| Mac | Desk sessions: importing, long reads, journal, tutor | Keyboard review (space, 1–4), paste import, a wide reading column; the system pinyin input method for typing Chinese |
 
-- **Shared code:** models, networking, offline review queue, FSRS, stroke matcher and Make Me a Hanzi stroke data live in one Swift package; targets hold only views and input handling.
-- **Minimum OS:** proposed iOS 18, iPadOS 18 and macOS 15 as the floor, adopting Liquid Glass styling on the 26 releases where available. Confirm before phase 4, when the native client starts.
-- **Sync:** every target syncs through the same `POST /reviews` endpoint with client-generated review ids, so a review done offline on the Mac and on the iPad merges cleanly (the server replays out-of-order history).
-- **Design:** one DESIGN.md shared with the PWA, plus the Apple HIG and SwiftUI skills from the build-session table, checked per size class and on Mac window resizing.
+- **Requirements:** HTTPS through Traefik. Service workers, offline caching and installation need a secure context.
+- **Storage:** the server is the source of truth. The device only caches the review queue and the offline outbox, so Safari clearing site data never loses reviews that already synced.
+- **Revisit native only for a gap the web cannot close.** The likeliest is Pencil latency or prediction in fast handwriting; PencilKit (with OwlLuna as reference) would be the fallback.
 
 ### Data model (core tables)
 
@@ -416,7 +408,7 @@ The medical track starts only after the core reaches HSK 3 to 4, and a second la
 - [ ] zh language pack: segmentation with custom dictionary, pinyin with sandhi, lookup, decomposition
 - [ ] FSRS-6 scheduler with meaning, reading and listening cards; review sync endpoint
 - [ ] PWA: review screen, reader with word-status colors and tap lookup, one-tap mining
-- [ ] Generator with coverage validation and repair loop, behind the LLM gateway with spend caps
+- [x] Generator with coverage validation and repair loop, behind the LLM gateway with a daily call cap
 - [ ] Sound bootcamp: pinyin lessons, Tone Perfect drills, English-speaker minimal pairs
 - [ ] Progress page: known words and characters, HSK coverage
 
@@ -460,4 +452,4 @@ The medical track starts only after the core reaches HSK 3 to 4, and a second la
 
 **Apps:** Du Chinese, The Chairman's Bao, Migaku and others
 
-**Reuse and design skills:** pypinyin, ts-fsrs, swift-fsrs, bitbemol/swift-fsrs, py-fsrs optimizer docs; Appllama skills, Impeccable, UI UX Pro Max, Apple HIG skills, SwiftUI Agent Skill, Swift Agent Skills index, Skillselion design ranking
+**Reuse and design skills:** pypinyin, ts-fsrs, py-fsrs optimizer docs; Appllama skills, Impeccable, UI UX Pro Max, Skillselion design ranking; SurfSense (Sign in with ChatGPT client, Apache-2.0)

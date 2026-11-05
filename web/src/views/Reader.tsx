@@ -1,3 +1,4 @@
+import { Fragment } from "preact";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { api, type TextDoc, type Tok } from "../api";
 import { LookupSheet, PlayIcon, type LookupTarget } from "../components/LookupSheet";
@@ -46,6 +47,8 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
   const [error, setError] = useState<string | null>(null);
   const [target, setTarget] = useState<LookupTarget | null>(null);
   const looked = useRef(new Set<number>());
+  const [showEn, setShowEn] = useState(false);
+  const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const settings = useSettings();
 
   const load = useCallback(() => {
@@ -78,6 +81,26 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
     }
   }
 
+  const meta = doc?.meta ?? {};
+  const map = meta.sentence_map ?? [];
+  const genSentences = meta.sentences ?? [];
+  // Show a translation after the last reader sentence that belongs to each generated sentence.
+  const translationAfter = (readerIdx: number): number | null => {
+    const g = map[readerIdx];
+    if (g == null || map[readerIdx + 1] === g) return null;
+    return g;
+  };
+  const isFlagged = (g: number) => flagged.has(g) || (meta.flags ?? []).some((f) => f.sentence === g);
+  async function flag(g: number) {
+    try {
+      await api.flag(id, g);
+      setFlagged(new Set([...flagged, g]));
+      toast("Flagged as unnatural. It won't be reused.");
+    } catch (e) {
+      toast(`Couldn't save: ${(e as Error).message}`);
+    }
+  }
+
   if (error) return <main class="page"><p class="error">{error}</p><a href="#/">Back</a></main>;
   if (!doc) return <main class="page"><p class="muted">Loading…</p></main>;
 
@@ -96,6 +119,7 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
         <a href="#/" class="back" aria-label="Back to library">‹</a>
         <div class="reader-title">
           <h1 lang="zh-CN">{doc.title}</h1>
+          {meta.title_en && <p class="title-en">{meta.title_en}</p>}
           <p class="muted">
             <span class="cov">{pct(doc.coverage_now)} known</span>
             {" · "}{counts.new} new · {counts.learning} learning
@@ -116,6 +140,11 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
           <button onClick={() => setSettings({ fontScale: Math.max(0.8, settings.fontScale - 0.1) })} aria-label="Smaller text">A−</button>
           <button onClick={() => setSettings({ fontScale: Math.min(1.6, settings.fontScale + 0.1) })} aria-label="Larger text">A+</button>
         </div>
+        {genSentences.length > 0 && (
+          <button class={`seg-single ${showEn ? "on" : ""}`} aria-pressed={showEn} onClick={() => setShowEn(!showEn)}>
+            English
+          </button>
+        )}
         {canSpeak() && (
           <button class="icon-btn" aria-label="Play whole text" onClick={() => speak(doc.tokens.map((t) => t.surface).join(""))}>
             <PlayIcon />
@@ -124,8 +153,11 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
       </div>
 
       <article class="reading" lang="zh-CN">
-        {sentences.map((s, i) => (
-          <span class="sentence" key={i}>
+        {sentences.map((s, i) => {
+          const g = showEn ? translationAfter(s[0].sentence_index) : null;
+          return (
+          <Fragment key={i}>
+          <span class="sentence">
             {glue(s).map((g) =>
               g.length === 1 ? (
                 <Word key={g[0].position} tok={g[0]} mode={settings.pinyin} onTap={onTap} />
@@ -136,8 +168,46 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
               )
             )}
           </span>
-        ))}
+          {g != null && genSentences[g] && (
+            <span class="translation" lang="en">
+              {genSentences[g].en}
+              <button class={`flag ${isFlagged(g) ? "on" : ""}`} disabled={isFlagged(g)} onClick={() => flag(g)}
+                aria-label="Flag this sentence as unnatural Chinese" title="Sounds unnatural">
+                {isFlagged(g) ? "flagged" : "⚑"}
+              </button>
+            </span>
+          )}
+          </Fragment>
+          );
+        })}
       </article>
+
+      {doc.provenance === "generated" && (
+        <p class="gen-note muted small">
+          Generated at HSK {meta.level ?? "?"}. Chinese written by a model; pinyin and glosses from local dictionaries.
+          {meta.accepted_with_issues && meta.out_of_bounds?.length
+            ? <> Includes words beyond your level: <span lang="zh-CN">{meta.out_of_bounds.join("、")}</span>.</>
+            : null}
+        </p>
+      )}
+
+      {(meta.questions?.length ?? 0) > 0 && (
+        <section class="questions">
+          <h2>Check yourself</h2>
+          <ol>
+            {meta.questions!.map((q, i) => (
+              <li key={i}>
+                <p class="q-zh" lang="zh-CN">{q.question_zh}</p>
+                <details>
+                  <summary>English and answer</summary>
+                  <p class="muted">{q.question_en}</p>
+                  <p>{q.answer_en}</p>
+                </details>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       <footer class="reader-foot">
         {doc.finished_at ? (

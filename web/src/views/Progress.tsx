@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { api, type Progress as P } from "../api";
+import { ModelSettings } from "../components/ModelSettings";
 import { toast } from "../components/Toast";
 import { num, pct } from "../format";
 import { setSettings, useSettings } from "../settings";
@@ -68,6 +69,8 @@ export function Progress() {
           ))}
         </div>
       </details>
+
+      <ModelSettings />
 
       <section class="card">
         <h2>Display</h2>

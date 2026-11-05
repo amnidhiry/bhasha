@@ -8,6 +8,8 @@ from app.db import get_db
 from app.models import AppUser, Exposure, Text
 from app.packs import INSTALLED
 from app.packs.base import WORD
+from app.generator import generate
+from app.llm.errors import DailyCapError, LlmError, NoModelError, PlanLimitError, SignInRequiredError
 from app.reader import create_text, now, serialize_text
 
 router = APIRouter(prefix="/texts", tags=["texts"])
@@ -35,6 +37,46 @@ def import_text(body: ImportIn, db: Session = Depends(get_db), user: AppUser = D
         raise HTTPException(400, f"no language pack for {body.language!r}")
     text = create_text(db, user.id, body.language, body.title, body.body, "imported", body.source_url)
     return serialize_text(db, user.id, text)
+
+
+class GenerateIn(BaseModel):
+    topic: str = Field(default="", max_length=200)
+    genre: str = "story"
+    length: str = "medium"
+    targets: list[str] = Field(default_factory=list, max_length=5)
+
+
+@router.post("/generate")
+def generate_text(body: GenerateIn, db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
+    """A level-matched text from the model, checked against your known words.
+    Takes 10-60 s with a ChatGPT plan; a background job comes with the worker."""
+    try:
+        text = generate(db, user.id, body.topic, body.genre, body.length, body.targets)
+    except (SignInRequiredError, NoModelError) as e:
+        raise HTTPException(409, str(e))
+    except (PlanLimitError, DailyCapError) as e:
+        raise HTTPException(429, str(e))
+    except LlmError as e:
+        raise HTTPException(502, str(e))
+    return serialize_text(db, user.id, text)
+
+
+class FlagIn(BaseModel):
+    sentence: int = Field(ge=0)
+    note: str = Field(default="", max_length=500)
+
+
+@router.post("/{text_id}/flag")
+def flag_sentence(text_id: int, body: FlagIn, db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
+    """'Sounds unnatural': kept with the text so flagged sentences are never reused."""
+    text = _own_text(db, user, text_id)
+    meta = dict(text.meta or {})
+    flags = [f for f in meta.get("flags", []) if f.get("sentence") != body.sentence]
+    flags.append({"sentence": body.sentence, "note": body.note, "at": now().isoformat()})
+    meta["flags"] = flags
+    text.meta = meta
+    db.commit()
+    return {"flags": flags}
 
 
 @router.get("")

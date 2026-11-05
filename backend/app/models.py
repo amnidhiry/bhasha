@@ -19,6 +19,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
+from sqlalchemy import Text as SAText
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -177,6 +178,8 @@ class Text(Base):
     provenance: Mapped[str] = mapped_column(String(32))  # imported | generated | tatoeba
     source_url: Mapped[str | None] = mapped_column(String(1024))
     coverage_at_creation: Mapped[float | None] = mapped_column(Float)
+    # Generated texts: translations, questions, target words, flags (see app/generator.py).
+    meta: Mapped[dict] = mapped_column(JSONType, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -219,4 +222,22 @@ class LlmCall(Base):
     output_tokens: Mapped[int] = mapped_column(Integer, default=0)
     cache_read_tokens: Mapped[int] = mapped_column(Integer, default=0)
     cost_usd: Mapped[float] = mapped_column(Numeric(10, 6), default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class LlmConnection(Base):
+    """Where model calls go. kind: chatgpt (Sign in with ChatGPT, plan usage) or
+    openai_compatible (LM Studio, or an API key). One is active at a time."""
+
+    __tablename__ = "llm_connection"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(32))
+    label: Mapped[str] = mapped_column(String(80))
+    base_url: Mapped[str] = mapped_column(String(512))
+    model: Mapped[str | None] = mapped_column(String(128))
+    # Encrypted JSON: a ChatGPT token set, or {"api_key": ...}. Null = signed out.
+    ciphertext: Mapped[str | None] = mapped_column(SAText)
+    token_version: Mapped[int] = mapped_column(Integer, default=0)
+    account_email: Mapped[str | None] = mapped_column(String(256))
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

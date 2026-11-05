@@ -21,10 +21,37 @@ export interface Tok {
   syllables: Syllable[];
 }
 
+export interface TextMeta {
+  title_en?: string;
+  sentences?: { zh: string; en: string }[];
+  sentence_map?: number[];
+  questions?: { question_zh: string; question_en: string; answer_en: string }[];
+  targets?: string[];
+  new_words?: string[];
+  accepted_with_issues?: boolean;
+  out_of_bounds?: string[];
+  flags?: { sentence: number; note: string }[];
+  level?: string;
+  genre?: string;
+}
+
+export interface LlmStatus {
+  connected: boolean;
+  kind?: "chatgpt" | "openai_compatible";
+  label?: string;
+  email?: string | null;
+  model?: string | null;
+  base_url?: string;
+  calls_today: number;
+  daily_cap: number;
+  secret_key_set: boolean;
+}
+
 export interface TextDoc {
   id: number;
   title: string;
   provenance: string;
+  meta: TextMeta;
   coverage_at_creation: number | null;
   coverage_now: number | null;
   finished_at: string | null;
@@ -142,6 +169,16 @@ export const api = {
   texts: () => req<TextSummary[]>("/texts"),
   text: (id: number) => req<TextDoc>(`/texts/${id}`),
   importText: (title: string, body: string) => post<TextDoc>("/texts/import", { title, body }),
+  generate: (b: { topic: string; genre: string; length: string; targets: string[] }) => post<TextDoc>("/texts/generate", b),
+  flag: (id: number, sentence: number, note = "") => post<{ flags: unknown[] }>(`/texts/${id}/flag`, { sentence, note }),
+  llmStatus: () => req<LlmStatus>("/llm/status"),
+  chatgptStart: () => post<{ flow_id: string; authorize_url: string; redirect_uri: string }>("/llm/chatgpt/start", {}),
+  chatgptFinish: (flow_id: string, address: string) => post<LlmStatus>("/llm/chatgpt/finish", { flow_id, address }),
+  connectCompatible: (base_url: string, api_key: string | null, model: string | null) =>
+    post<LlmStatus>("/llm/openai-compatible", { base_url, api_key, model, label: "OpenAI-compatible" }),
+  llmModels: () => req<{ id: string; name: string }[]>("/llm/models"),
+  setModel: (model: string) => req<LlmStatus>("/llm/model", { method: "PUT", body: JSON.stringify({ model }) }),
+  signOut: () => post<LlmStatus>("/llm/signout", {}),
   finish: (id: number) => post<{ exposures: number; characters_read: number }>(`/texts/${id}/finish`, {}),
   lookup: (q: string, opts: { textId?: number; log?: boolean } = {}) => {
     const p = new URLSearchParams({ q });
