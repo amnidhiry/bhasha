@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import current_user
 from app.config import get_settings
 from app.db import get_db
-from app.learner import _aware, apply_review, is_leech, replay, retrievability
+from app.learner import _aware, apply_review, is_leech, replay, retrievability, scheduler
 from app.models import AppUser, Card, CedictEntry, ReviewLog, Unit
 from app.packs.zh.pinyin import numeric_to_marks
 from fsrs import State
@@ -33,6 +33,17 @@ def meanings_for(db: Session, unit: Unit) -> list[str]:
     return [g for e in (exact or entries) for g in e.glosses][:6]
 
 
+class FsrsState(BaseModel):
+    """Card memory state, so offline clients can run the same FSRS-6 scheduler."""
+    state: int  # 1 learning, 2 review, 3 relearning (py-fsrs has no separate "new")
+    step: int | None
+    stability: float | None
+    difficulty: float | None
+    due: datetime
+    last_review: datetime | None
+    lapses: int
+
+
 class DueCard(BaseModel):
     card_id: int
     unit_id: int
@@ -47,6 +58,30 @@ class DueCard(BaseModel):
     is_new: bool
     leech: bool
     retrievability: float
+    fsrs: FsrsState
+
+
+class SchedulerParams(BaseModel):
+    version: str
+    weights: list[float]
+    desired_retention: float
+    learning_steps_minutes: list[float]
+    relearning_steps_minutes: list[float]
+    maximum_interval: int
+
+
+@router.get("/params", response_model=SchedulerParams)
+def params(_: AppUser = Depends(current_user)):
+    """The exact scheduler the server runs, mirrored by ts-fsrs in the PWA."""
+    sch = scheduler()
+    return SchedulerParams(
+        version="FSRS-6",
+        weights=list(sch.parameters),
+        desired_retention=sch.desired_retention,
+        learning_steps_minutes=[s.total_seconds() / 60 for s in sch.learning_steps],
+        relearning_steps_minutes=[s.total_seconds() / 60 for s in sch.relearning_steps],
+        maximum_interval=sch.maximum_interval,
+    )
 
 
 @router.get("/due", response_model=list[DueCard])
@@ -97,6 +132,8 @@ def due(limit: int = 50, db: Session = Depends(get_db), user: AppUser = Depends(
             meanings=meanings_for(db, c.unit), classifiers=(c.unit.extra or {}).get("classifiers", []),
             context_sentence=c.context_sentence, due=_aware(c.due), is_new=is_new, leech=is_leech(c),
             retrievability=retrievability(c, now),
+            fsrs=FsrsState(state=c.state, step=c.step, stability=c.stability, difficulty=c.difficulty,
+                           due=_aware(c.due), last_review=_aware(c.last_review), lapses=c.lapses),
         ))
     return out
 

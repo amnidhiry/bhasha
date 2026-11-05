@@ -66,6 +66,25 @@ export interface Lookup {
   logged: string | null;
 }
 
+export interface FsrsState {
+  state: number; // 1 learning, 2 review, 3 relearning
+  step: number | null;
+  stability: number | null;
+  difficulty: number | null;
+  due: string;
+  last_review: string | null;
+  lapses: number;
+}
+
+export interface SchedulerParams {
+  version: string;
+  weights: number[];
+  desired_retention: number;
+  learning_steps_minutes: number[];
+  relearning_steps_minutes: number[];
+  maximum_interval: number;
+}
+
 export interface DueCard {
   card_id: number;
   unit_id: number;
@@ -80,6 +99,7 @@ export interface DueCard {
   is_new: boolean;
   leech: boolean;
   retrievability: number;
+  fsrs: FsrsState;
 }
 
 export interface Progress {
@@ -139,6 +159,7 @@ export const api = {
     post<{ marked: number }>("/units/mark", { unit_ids: unitIds, status }),
   markLevel: (levelTag: string, status: "known" | "clear") =>
     post<{ marked: number }>("/units/mark", { level_tag: levelTag, status }),
+  schedulerParams: () => req<SchedulerParams>("/reviews/params"),
   due: (limit = 100) => req<DueCard[]>(`/reviews/due?limit=${limit}`),
   sync: (reviews: unknown[]) =>
     post<{ applied: string[]; duplicates: string[]; replayed_cards: number[] }>("/reviews", reviews),

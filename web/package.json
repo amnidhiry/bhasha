@@ -9,7 +9,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "preact": "11.1.1"
+    "preact": "11.1.1",
+    "ts-fsrs": "6.0.0"
   },
   "devDependencies": {
     "typescript": "7.0.2",

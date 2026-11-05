@@ -14,6 +14,9 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
       decomposition with meaning and sound components, add to reviews / I know this / ignore
 - [x] Review screen: meaning, reading and listening cards with context sentence, keyboard 1–4 and space.
       Ratings go to an offline outbox (client UUIDs) and sync when online
+- [x] Offline scheduling with ts-fsrs pinned to FSRS-6 and the server's own parameters (`/api/reviews/params`):
+      failed and new cards come back after their 1 and 10 minute steps with or without a connection.
+      `backend/tests/test_fsrs_parity.py` checks it against py-fsrs
 - [x] Progress: known words and characters, cumulative HSK 3.0 bars, placement marks per level
 - [x] Installable PWA (manifest, icons, service worker caching the app and recent API reads), light and dark
 - [x] Interim audio through the browser's Mandarin voice (built into iOS and macOS) until CosyVoice
@@ -36,7 +39,7 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 - [x] Mining requires a context sentence or text; placement bulk-marking by HSK level
 - [x] Progress: known words and characters, cumulative HSK coverage, characters read
 
-Next: ts-fsrs in the PWA so learning steps reschedule offline, the LLM gateway and graded-reader generator with its repair loop, the arq worker, the
+Next: the LLM gateway and graded-reader generator with its repair loop, the arq worker, the
 nightly FSRS optimizer, then SUBTLEX-CH and Tatoeba imports, g2pM for polyphones, and the sound bootcamp.
 
 ## Run it

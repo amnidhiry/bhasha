@@ -1,12 +1,14 @@
 // Offline-safe review queue. Each rating gets a client UUID and timestamp and is
 // kept in localStorage until the server acknowledges it. The server is the
 // source of truth and replays out-of-order history, so syncing late is safe.
-// TODO: ts-fsrs for local rescheduling of learning steps while offline.
+// Learning steps are rescheduled locally with ts-fsrs (see scheduler.ts).
 
-import { api, type DueCard } from "./api";
+import { api, type DueCard, type SchedulerParams } from "./api";
 
 const OUTBOX = "bhasha.outbox.v1";
 const QUEUE = "bhasha.due.v1";
+const WAITING = "bhasha.waiting.v1";
+const PARAMS = "bhasha.fsrs-params.v1";
 
 export interface PendingReview {
   id: string;
@@ -66,6 +68,11 @@ export function flush(): Promise<number> {
 
 export const cachedQueue = () => read<DueCard[]>(QUEUE, []);
 export const saveQueue = (cards: DueCard[]) => write(QUEUE, cards);
+/** Cards answered this session that come back after a learning step (minutes away). */
+export const cachedWaiting = () => read<DueCard[]>(WAITING, []);
+export const saveWaiting = (cards: DueCard[]) => write(WAITING, cards);
+export const cachedParams = () => read<SchedulerParams | null>(PARAMS, null);
+export const saveParams = (p: SchedulerParams) => write(PARAMS, p);
 
 if (typeof window !== "undefined") {
   window.addEventListener("online", () => void flush());

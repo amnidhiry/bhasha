@@ -140,6 +140,7 @@ button { font: inherit; color: inherit; }
 .empty { text-align: center; padding: 32px 20px; }
 .empty-glyph { font: 400 64px/1 var(--serif-zh); color: var(--accent); margin: 0 0 12px; }
 .empty .muted { max-width: 42ch; margin: 8px auto 20px; }
+.countdown { font: 600 2.6rem/1 var(--sans); font-variant-numeric: tabular-nums; color: var(--accent); margin: 0 0 12px; }
 
 /* Library */
 .text-list { list-style: none; margin: 0; padding: 0; }

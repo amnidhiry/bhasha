@@ -147,3 +147,14 @@ def test_learning_cards_are_not_known_yet(client):
     client.post("/api/reviews", json=[{"id": str(uuid.uuid4()), "card_id": cid, "rating": 4,
                                        "reviewed_at": (now + timedelta(minutes=1)).isoformat()}])
     assert client.get("/api/progress").json()["known_words"] == 1  # graduated, R ~ 1
+
+
+def test_scheduler_params_and_card_state_for_offline_clients(client):
+    p = client.get("/api/reviews/params").json()
+    assert p["version"] == "FSRS-6" and len(p["weights"]) == 21
+    assert p["learning_steps_minutes"] == [1.0, 10.0] and p["relearning_steps_minutes"] == [10.0]
+    t = _import(client)
+    bank = next(w for w in t["tokens"] if w["surface"] == "银行")
+    client.post("/api/mine", json={"unit_id": bank["unit_id"], "text_id": t["id"], "sentence": "s"})
+    card = client.get("/api/reviews/due").json()[0]
+    assert card["fsrs"]["state"] == 1 and card["fsrs"]["last_review"] is None

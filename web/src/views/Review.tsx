@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { api, type DueCard } from "../api";
 import { PlayIcon } from "../components/LookupSheet";
 import { Pinyin } from "../components/Pinyin";
-import { cachedQueue, enqueue, flush, pending, saveQueue } from "../outbox";
+import { cachedParams, cachedQueue, cachedWaiting, enqueue, flush, pending, saveParams, saveQueue, saveWaiting } from "../outbox";
+import { makeScheduler, review as localReview } from "../scheduler";
 import { canSpeak, speak } from "../speech";
 
 const RATINGS = [
@@ -11,6 +12,20 @@ const RATINGS = [
   { r: 3, label: "Good", hint: "Got it" },
   { r: 4, label: "Easy", hint: "Instant" },
 ] as const;
+
+/** Cards whose next step is within this window come back in this session. */
+const LOOKAHEAD_MS = 60 * 60 * 1000;
+const dueMs = (c: DueCard) => new Date(c.fsrs.due).getTime();
+
+function useClock(active: boolean) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [active]);
+  return now;
+}
 
 const FACET_PROMPT: Record<string, string> = {
   meaning: "What does it mean?",
@@ -30,6 +45,8 @@ function Sentence({ text, word }: { text: string; word: string }) {
 
 export function Review({ onCount }: { onCount: (n: number) => void }) {
   const [queue, setQueue] = useState<DueCard[] | null>(null);
+  const [waiting, setWaiting] = useState<DueCard[]>(cachedWaiting);
+  const [sched, setSched] = useState<Awaited<ReturnType<typeof makeScheduler>> | null>(null);
   const [offline, setOffline] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [doneCount, setDoneCount] = useState(0);
@@ -38,21 +55,53 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
 
   const load = useCallback(async () => {
     setUnsynced(await flush());
+    const params = await api.schedulerParams().then((p) => (saveParams(p), p)).catch(() => cachedParams());
+    if (params) makeScheduler(params).then(setSched).catch(() => setSched(null));
+    const waitingIds = () => new Set(pending().map((p) => p.card_id));
+    let q: DueCard[];
     try {
-      const cards = await api.due();
-      const waiting = new Set(pending().map((p) => p.card_id));
-      const q = cards.filter((c) => !waiting.has(c.card_id));
-      saveQueue(q);
-      setQueue(q);
+      const fresh = await api.due();
+      // Ratings still in the outbox haven't reached the server; don't show those cards twice.
+      const skip = waitingIds();
+      q = fresh.filter((c) => !skip.has(c.card_id));
       setOffline(false);
     } catch {
-      const waiting = new Set(pending().map((p) => p.card_id));
-      setQueue(cachedQueue().filter((c) => !waiting.has(c.card_id)));
+      const skip = waitingIds();
+      q = cachedQueue().filter((c) => !skip.has(c.card_id));
       setOffline(true);
     }
+    // Keep locally scheduled learning cards the server list doesn't already include.
+    const inQueue = new Set(q.map((c) => c.card_id));
+    const w = cachedWaiting().filter((c) => !inQueue.has(c.card_id));
+    saveQueue(q);
+    saveWaiting(w);
+    setQueue(q);
+    setWaiting(w);
   }, []);
   useEffect(() => void load(), [load]);
-  useEffect(() => onCount(queue?.length ?? 0), [queue, onCount]);
+  useEffect(() => onCount((queue?.length ?? 0) + waiting.filter((c) => dueMs(c) <= Date.now()).length), [queue, waiting, onCount]);
+
+  // Move learning cards back into the queue when their step is up.
+  const now = useClock(waiting.length > 0);
+  useEffect(() => {
+    if (!queue) return;
+    const ready = waiting.filter((c) => dueMs(c) <= now);
+    if (!ready.length) return;
+    const rest = waiting.filter((c) => dueMs(c) > now);
+    const q = [...ready, ...queue];
+    setQueue(q);
+    setWaiting(rest);
+    saveQueue(q);
+    saveWaiting(rest);
+  }, [now, waiting, queue]);
+
+  const pullNext = () => {
+    if (!waiting.length || !queue) return;
+    const [next, ...rest] = [...waiting].sort((a, b) => dueMs(a) - dueMs(b));
+    setQueue([next, ...queue]);
+    setWaiting(rest);
+    saveWaiting(rest);
+  };
 
   const card = queue?.[0];
   useEffect(() => {
@@ -69,11 +118,19 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
 
   const rate = (rating: 1 | 2 | 3 | 4) => {
     if (!card || !revealed) return;
-    enqueue({ card_id: card.card_id, rating, reviewed_at: new Date().toISOString(),
-      duration_ms: Date.now() - shownAt.current });
+    const at = new Date();
+    enqueue({ card_id: card.card_id, rating, reviewed_at: at.toISOString(), duration_ms: Date.now() - shownAt.current });
     const rest = queue!.slice(1);
     saveQueue(rest);
     setQueue(rest);
+    if (sched) {
+      const next = localReview(sched, card.fsrs, card.card_id, rating, at);
+      if (new Date(next.due).getTime() - at.getTime() <= LOOKAHEAD_MS) {
+        const w = [...waiting.filter((c) => c.card_id !== card.card_id), { ...card, fsrs: next, is_new: false }];
+        setWaiting(w);
+        saveWaiting(w);
+      }
+    }
     setDoneCount((n) => n + 1);
     setTimeout(() => setUnsynced(pending().length), 400);
   };
@@ -90,6 +147,28 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
 
   if (!queue) return <main class="page"><p class="muted">Loading reviews…</p></main>;
 
+  if (!card && waiting.length) {
+    const next = Math.min(...waiting.map(dueMs));
+    const secs = Math.max(0, Math.ceil((next - now) / 1000));
+    return (
+      <main class="page">
+        <header class="page-head"><h1>Review</h1></header>
+        <section class="empty card">
+          <p class="countdown" aria-live="off">{Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}</p>
+          <h2>{waiting.length === 1 ? "1 card is" : `${waiting.length} cards are`} between learning steps</h2>
+          <p class="muted">
+            The next one comes back on its own. Spacing even a few minutes helps it stick, so read something meanwhile.
+          </p>
+          <div class="row">
+            <a class="btn primary" href="#/">Go read</a>
+            <button class="btn" onClick={pullNext}>Show it now</button>
+          </div>
+          {unsynced > 0 && <p class="muted small">{unsynced} reviews waiting to sync</p>}
+        </section>
+      </main>
+    );
+  }
+
   if (!card) {
     return (
       <main class="page">
@@ -99,7 +178,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
           <h2>{doneCount ? `${doneCount} reviewed. Nothing else is due.` : "Nothing due"}</h2>
           <p class="muted">
             {doneCount
-              ? "New cards come back in a few minutes for a second pass. Reading next is a good use of the time."
+              ? "Everything due today is done. Reading next is a good use of the time."
               : "Add words from the reader. They show up here once you've met them in a text."}
           </p>
           <div class="row">
