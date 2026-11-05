@@ -343,6 +343,11 @@ class UserFsrs(Base):
     fitted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     n_reviews: Mapped[int] = mapped_column(Integer, default=0)
     version: Mapped[int] = mapped_column(Integer, default=0)  # bumps on every change
+    # Target recall per card type, e.g. {"listening": 0.85, "handwriting": 0.85}; others use desired_retention.
+    retention_by_facet: Mapped[dict] = mapped_column(JSONType, default=dict)
+    # Reading first: pause new cards while the review backlog is above the threshold.
+    reading_first: Mapped[bool] = mapped_column(Boolean, default=True)
+    backlog_threshold: Mapped[int] = mapped_column(Integer, default=60)
 
 
 class FsrsFit(Base):

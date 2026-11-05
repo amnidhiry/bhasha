@@ -644,3 +644,8 @@ details.sub summary { font-weight: 550; color: var(--ink-2); font-size: 0.9rem; 
 .ch-group-chars { display: flex; flex-wrap: wrap; gap: 2px 4px; font: 1.35rem/1.4 var(--serif-zh); padding: 0 6px; }
 .ch-group-chars a { text-decoration: none; padding: 0 3px; border-radius: 6px; }
 .ch-group-chars a:hover, .ch-group-chars a:focus-visible { background: var(--accent-soft); }
+
+/* Review tuning */
+.paused-note { background: var(--learning); color: var(--learning-ink); border-radius: 10px; padding: 8px 12px; margin: 8px 0 0; }
+.inline-field { grid-template-columns: 1fr auto; align-items: center; margin: 6px 0; }
+.toggle select { font: inherit; margin: 0 2px; }

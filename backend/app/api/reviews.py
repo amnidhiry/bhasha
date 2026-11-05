@@ -10,7 +10,7 @@ from app.api.deps import current_user
 from app.config import get_settings
 from app.db import get_db
 from app.learner import _aware, apply_review, is_leech, replay, retrievability, user_scheduler
-from app.models import AppUser, Card, CedictEntry, CharacterInfo, ReviewLog, Unit
+from app.models import AppUser, Card, CedictEntry, CharacterInfo, ReviewLog, Unit, UserFsrs
 from app.packs.zh.pinyin import numeric_to_marks
 from fsrs import State
 
@@ -70,6 +70,7 @@ class SchedulerParams(BaseModel):
     version: str
     weights: list[float]
     desired_retention: float
+    retention_by_facet: dict[str, float] = {}
     learning_steps_minutes: list[float]
     relearning_steps_minutes: list[float]
     maximum_interval: int
@@ -79,14 +80,39 @@ class SchedulerParams(BaseModel):
 def params(db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
     """The exact scheduler the server runs, mirrored by ts-fsrs in the PWA."""
     sch = user_scheduler(db, user.id)
+    u = db.get(UserFsrs, user.id)
     return SchedulerParams(
         version="FSRS-6",
         weights=list(sch.parameters),
         desired_retention=sch.desired_retention,
+        retention_by_facet={k: float(v) for k, v in ((u.retention_by_facet or {}) if u else {}).items()},
         learning_steps_minutes=[s.total_seconds() / 60 for s in sch.learning_steps],
         relearning_steps_minutes=[s.total_seconds() / 60 for s in sch.relearning_steps],
         maximum_interval=sch.maximum_interval,
     )
+
+
+def backlog(db: Session, user_id: int, mode: str, now: datetime) -> int:
+    """Reviewed cards that are due now (new cards don't count)."""
+    in_mode = (Card.facet == "handwriting") if mode == "writing" else (Card.facet != "handwriting")
+    return db.scalar(select(func.count()).select_from(Card).where(
+        Card.user_id == user_id, ~Card.suspended, Card.due <= now, Card.last_review.is_not(None), in_mode)) or 0
+
+
+def new_cards_paused(db: Session, user_id: int, mode: str, now: datetime) -> bool:
+    """Reading first: when the backlog is high, clear it before adding new cards."""
+    u = db.get(UserFsrs, user_id)
+    enabled = u.reading_first if u else True
+    threshold = u.backlog_threshold if u else 60
+    return bool(enabled) and backlog(db, user_id, mode, now) > threshold
+
+
+@router.get("/status")
+def review_status(mode: str = "words", db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
+    now = datetime.now(timezone.utc)
+    u = db.get(UserFsrs, user.id)
+    return {"backlog": backlog(db, user.id, mode, now), "threshold": u.backlog_threshold if u else 60,
+            "reading_first": u.reading_first if u else True, "new_paused": new_cards_paused(db, user.id, mode, now)}
 
 
 @router.get("/due", response_model=list[DueCard])
@@ -119,6 +145,8 @@ def due(limit: int = 50, mode: str = "words", db: Session = Depends(get_db), use
     }
     budget = max(0, min(limit, max_reviews - done_today))
     new_budget = max(0, max_new - new_today)
+    if new_cards_paused(db, user.id, mode, now):
+        new_budget = 0
 
     out: list[DueCard] = []
     seen_units: set[int] = set()
@@ -182,7 +210,13 @@ def add_listening_card_if_ready(db: Session, card: Card) -> None:
 
 def record_reviews(db: Session, user_id: int, reviews: list[ReviewIn]) -> SyncResult:
     result = SyncResult(applied=[], duplicates=[], replayed_cards=[])
-    sched = user_scheduler(db, user_id)
+    scheds: dict[str, object] = {}
+
+    def sched_for(card: Card):
+        kind = card.facet.split(":", 1)[0]
+        if kind not in scheds:
+            scheds[kind] = user_scheduler(db, user_id, facet=card.facet)
+        return scheds[kind]
     needs_replay: set[int] = set()
     for r in sorted(reviews, key=lambda r: _aware(r.reviewed_at)):
         if db.get(ReviewLog, r.id) is not None:
@@ -199,12 +233,13 @@ def record_reviews(db: Session, user_id: int, reviews: list[ReviewIn]) -> SyncRe
         elif card.last_review is not None and _aware(r.reviewed_at) < _aware(card.last_review):
             needs_replay.add(card.id)  # out-of-order offline sync
         else:
-            apply_review(card, r.rating, r.reviewed_at, r.duration_ms, sched)
+            apply_review(card, r.rating, r.reviewed_at, r.duration_ms, sched_for(card))
         result.applied.append(r.id)
     db.flush()
     for card_id in needs_replay:
         card = db.get(Card, card_id)
-        replay(card, db.scalars(select(ReviewLog).where(ReviewLog.card_id == card_id)), user_scheduler(db, user_id, fuzz=False))
+        replay(card, db.scalars(select(ReviewLog).where(ReviewLog.card_id == card_id)),
+               user_scheduler(db, user_id, fuzz=False, facet=card.facet))
         result.replayed_cards.append(card_id)
     for card_id in {r.card_id for r in reviews}:
         add_listening_card_if_ready(db, db.get(Card, card_id))

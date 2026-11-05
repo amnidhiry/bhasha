@@ -31,12 +31,20 @@ def user_settings(db: Session, user_id: int) -> UserFsrs | None:
     return db.get(UserFsrs, user_id)
 
 
-def user_scheduler(db: Session, user_id: int, fuzz: bool = True) -> Scheduler:
+def facet_kind(facet: str | None) -> str:
+    """'cloze:12' -> 'cloze'; settings are per kind of card."""
+    return (facet or "").split(":", 1)[0]
+
+
+def user_scheduler(db: Session, user_id: int, fuzz: bool = True, facet: str | None = None) -> Scheduler:
     """The learner's own scheduler: weights fitted by the nightly optimizer (once
-    accepted) and their chosen retention; FSRS-6 defaults until then."""
+    accepted) and their chosen retention, per card type if set; FSRS-6 defaults until then."""
     u = user_settings(db, user_id)
     weights = tuple(u.weights) if u and u.weights else None
-    return scheduler(weights, u.desired_retention if u else None, fuzz)
+    retention = u.desired_retention if u else None
+    if u and facet and (u.retention_by_facet or {}).get(facet_kind(facet)):
+        retention = float(u.retention_by_facet[facet_kind(facet)])
+    return scheduler(weights, retention, fuzz)
 
 
 def _aware(dt: datetime | None) -> datetime | None:

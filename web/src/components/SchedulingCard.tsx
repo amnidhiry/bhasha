@@ -80,6 +80,36 @@ export function SchedulingCard() {
           </button>
         ))}
       </div>
+      <details class="sub">
+        <summary>By card type</summary>
+        <p class="muted small">Listening and handwriting can run lower: forgetting one now and then costs little.</p>
+        {[["meaning", "Meaning"], ["reading", "Reading"], ["listening", "Listening"], ["handwriting", "Handwriting"], ["cloze", "Fill-in"]].map(([k, label]) => {
+          const v = st.retention_by_facet[k];
+          return (
+            <label key={k} class="field inline-field">
+              <span>{label}</span>
+              <select value={v != null ? String(v) : ""} disabled={busy}
+                onChange={(e) => act(() => api.fsrsFacetRetention(k, e.currentTarget.value ? Number(e.currentTarget.value) : null),
+                  `${label}: ${e.currentTarget.value ? pct(Number(e.currentTarget.value)) : "default"}`)}>
+                <option value="">Default ({pct(st.desired_retention)})</option>
+                {RETENTIONS.map((r) => <option key={r} value={String(r)}>{pct(r)}</option>)}
+              </select>
+            </label>
+          );
+        })}
+      </details>
+
+      <label class="toggle">
+        <input type="checkbox" checked={st.reading_first} disabled={busy}
+          onChange={(e) => act(() => api.fsrsReadingFirst(e.currentTarget.checked, st.backlog_threshold),
+            e.currentTarget.checked ? "Reading first on" : "Reading first off")} />
+        <span>Reading first: pause new cards while more than{" "}
+          <select value={String(st.backlog_threshold)} disabled={busy} onClick={(e) => e.stopPropagation()}
+            onChange={(e) => act(() => api.fsrsReadingFirst(st.reading_first, Number(e.currentTarget.value)), "Threshold set")}>
+            {[30, 60, 100, 150].map((n) => <option key={n} value={String(n)}>{n}</option>)}
+          </select>{" "}reviews are due</span>
+      </label>
+
       {st.suggested_retention != null && Math.abs(st.suggested_retention - st.desired_retention) > 1e-6 && (
         <p class="small">
           Your reviews suggest {pct(st.suggested_retention)}: the least total study time for what you retain.{" "}

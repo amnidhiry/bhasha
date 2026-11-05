@@ -62,3 +62,14 @@ export function review(s: Sched, f: FsrsState, cardId: number, grade: 1 | 2 | 3 
     lapses: f.lapses + (grade === 1 && wasReview ? 1 : 0),
   };
 }
+
+/** One scheduler per target recall: per-card-type targets (listening, handwriting...)
+ * get their own, everything else uses the default. */
+export async function makeSchedulerSet(p: SchedulerParams): Promise<(facet: string) => Sched> {
+  const base = await makeScheduler(p);
+  const by: Record<string, Sched> = {};
+  for (const [kind, r] of Object.entries(p.retention_by_facet ?? {})) {
+    by[kind] = await makeScheduler({ ...p, desired_retention: r });
+  }
+  return (facet: string) => by[facet.split(":")[0]] ?? base;
+}

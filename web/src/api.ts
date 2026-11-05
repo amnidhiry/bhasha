@@ -130,6 +130,7 @@ export interface SchedulerParams {
   version: string;
   weights: number[];
   desired_retention: number;
+  retention_by_facet?: Record<string, number>;
   learning_steps_minutes: number[];
   relearning_steps_minutes: number[];
   maximum_interval: number;
@@ -182,6 +183,9 @@ export interface Bootcamp {
 
 export interface FsrsStatus {
   personalized: boolean;
+  retention_by_facet: Record<string, number>;
+  reading_first: boolean;
+  backlog_threshold: number;
   fitted_at: string | null;
   desired_retention: number;
   retention_is_default: boolean;
@@ -426,6 +430,12 @@ export const api = {
   speechVoice: (voice: string) => req<SpeechStatus>("/speech/voice", { method: "PUT", body: JSON.stringify({ voice }) }),
   toneCheck: (voices: string[] = []) => post<{ job_id: number }>("/speech/tone-check", { voices }),
   fsrsFit: () => post<FsrsStatus>("/fsrs/fit", {}),
+  fsrsFacetRetention: (facet: string, desired_retention: number | null) =>
+    req<FsrsStatus>("/fsrs/retention", { method: "PUT", body: JSON.stringify({ facet, desired_retention }) }),
+  fsrsReadingFirst: (enabled: boolean, threshold: number) =>
+    req<FsrsStatus>("/fsrs/reading-first", { method: "PUT", body: JSON.stringify({ enabled, threshold }) }),
+  reviewStatus: (mode: "words" | "writing") =>
+    req<{ backlog: number; threshold: number; reading_first: boolean; new_paused: boolean }>(`/reviews/status?mode=${mode}`),
   fsrsRetention: (desired_retention: number | null) =>
     req<FsrsStatus>("/fsrs/retention", { method: "PUT", body: JSON.stringify({ desired_retention }) }),
   bootcamp: () => req<Bootcamp>("/bootcamp"),

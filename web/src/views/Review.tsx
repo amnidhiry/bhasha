@@ -4,7 +4,7 @@ import { PlayIcon } from "../components/LookupSheet";
 import { Pinyin } from "../components/Pinyin";
 import { cachedParams, cachedQueue, cachedWaiting, enqueue, flush, pending, saveParams, saveQueue, saveWaiting, type Mode } from "../outbox";
 import { WritingPad, type PadHandle } from "../components/WritingPad";
-import { makeScheduler, review as localReview } from "../scheduler";
+import { makeSchedulerSet, review as localReview } from "../scheduler";
 import { canSpeak, speak } from "../speech";
 
 const RATINGS = [
@@ -92,7 +92,8 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
     setWaiting(cachedWaiting(m));
     setModeState(m);
   };
-  const [sched, setSched] = useState<Awaited<ReturnType<typeof makeScheduler>> | null>(null);
+  const [sched, setSched] = useState<Awaited<ReturnType<typeof makeSchedulerSet>> | null>(null);
+  const [paused, setPaused] = useState<{ backlog: number; threshold: number } | null>(null);
   const [offline, setOffline] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [doneCount, setDoneCount] = useState(0);
@@ -102,7 +103,8 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
   const load = useCallback(async () => {
     setUnsynced(await flush());
     const params = await api.schedulerParams().then((p) => (saveParams(p), p)).catch(() => cachedParams());
-    if (params) makeScheduler(params).then(setSched).catch(() => setSched(null));
+    if (params) makeSchedulerSet(params).then((f) => setSched(() => f)).catch(() => setSched(null));
+    api.reviewStatus(mode).then((st) => setPaused(st.new_paused ? st : null)).catch(() => setPaused(null));
     const waitingIds = () => new Set(pending().map((p) => p.card_id));
     let q: DueCard[];
     try {
@@ -191,7 +193,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
     saveQueue(rest, mode);
     setQueue(rest);
     if (sched) {
-      const next = localReview(sched, card.fsrs, card.card_id, rating, at);
+      const next = localReview(sched(card.facet), card.fsrs, card.card_id, rating, at);
       if (new Date(next.due).getTime() - at.getTime() <= LOOKAHEAD_MS) {
         const w = [...waiting.filter((c) => c.card_id !== card.card_id), { ...card, fsrs: next, is_new: false }];
         setWaiting(w);
@@ -273,6 +275,12 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
   const cue = writing ? masked(card.context_sentence, card.headword) : null;
   return (
     <main class="page review">
+      {paused && (
+        <p class="paused-note small">
+          New cards paused: {paused.backlog} reviews are waiting (more than {paused.threshold}). Clearing them first keeps
+          reading time free. <a href="#/progress">Change</a>
+        </p>
+      )}
       <header class="rv-top">
         {modeSwitch}
         <span class="muted">{queue.length} left{doneCount ? ` · ${doneCount} done` : ""}</span>
