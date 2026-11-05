@@ -8,6 +8,13 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 
 ### Phase 1 PWA (in progress)
 
+- [x] Server-side speech: a separate speech service (`speech/`, Kokoro, CPU container on the homelab) that bhasha
+      calls over HTTP. Every clip is cached on the homelab; new texts are pre-rendered sentence by sentence in the
+      worker; the PWA falls back to the device voice when no host answers. Several hosts can be listed in order,
+      so a GPU PC can go first with the homelab CPU as backup (`speech/windows/README.md`). Progress → Voice
+      runs a tone check that synthesizes test syllables and scores their pitch, so you pick a voice that gets
+      tones right
+
 - [x] Nightly FSRS re-fit: once you have 400 reviews, the worker fits FSRS-6 to your own log (then monthly, or
       when the log grows by a quarter). New parameters are used only if they predict held-out cards better
       (log loss and binned RMSE, as srs-benchmark scores them); every attempt and its numbers is in Progress →
@@ -79,12 +86,12 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 - [x] Mining requires a context sentence or text; placement bulk-marking by HSK level
 - [x] Progress: known words and characters, cumulative HSK coverage, characters read
 
-Next: g2pM for polyphones and server-side TTS.
+Next: g2pM for polyphones.
 
 ## Run it
 
 ```bash
-cp .env.example .env   # set POSTGRES_PASSWORD and BHASHA_SECRET_KEY (openssl rand -hex 32)
+cp .env.example .env   # set POSTGRES_PASSWORD, BHASHA_SECRET_KEY (openssl rand -hex 32) and BHASHA_SPEECH_TOKEN
 ```
 
 ```bash
@@ -111,6 +118,11 @@ plan's limits.
 (Michigan State University, open access; cite it if you share work that uses it). Download it from
 https://tone.lib.msu.edu, unpack the MP3s anywhere under `data/toneperfect/` (files are named like
 `ma3_FV1_MP3.mp3`), then run `./ops/import-data.sh`. Drills then play six different speakers at random.
+
+**Speech:** the `speech` container runs Kokoro on the homelab's CPU and downloads its weights (~330 MB) on first use.
+After the first start, open Progress → Voice and press **Check tones**. To use a GPU PC as well, follow
+`speech/windows/README.md`, then list it first:
+`BHASHA_SPEECH_URLS=http://<pc>:8790,http://speech:8790`.
 
 There are no native apps: the PWA is the app on iPhone, iPad and Mac. To install it on iPhone, iPad or Mac (Share, then Add to Home Screen / Add to Dock), serve it over
 HTTPS through Traefik. Browsers only enable the service worker and offline caching in a secure
@@ -139,6 +151,7 @@ cd web && npm install && npm run dev   # http://localhost:5173, proxies /api to 
 ## Layout
 
 ```
+speech/                speech service (FastAPI + Kokoro); windows/ has GPU-PC scripts
 backend/app/
   models.py         core tables
   learner.py        FSRS mapping, replay, knownness, coverage

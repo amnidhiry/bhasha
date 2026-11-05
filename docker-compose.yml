@@ -14,8 +14,12 @@ services:
       BHASHA_TIMEZONE: ${BHASHA_TIMEZONE:-UTC}
       BHASHA_SECRET_KEY: ${BHASHA_SECRET_KEY:-}
       BHASHA_LLM_MAX_CALLS_PER_DAY: ${BHASHA_LLM_MAX_CALLS_PER_DAY:-300}
+      BHASHA_SPEECH_URLS: ${BHASHA_SPEECH_URLS:-http://speech:8790}
+      BHASHA_SPEECH_TOKEN: ${BHASHA_SPEECH_TOKEN:?set in .env}
+      BHASHA_AUDIO_CACHE_DIR: /srv/audio
     volumes:
       - ./data:/data:ro           # source datasets for the importers
+      - audio:/srv/audio          # synthesized speech cache
     depends_on:
       db:
         condition: service_healthy
@@ -41,12 +45,32 @@ services:
       BHASHA_TIMEZONE: ${BHASHA_TIMEZONE:-UTC}
       BHASHA_SECRET_KEY: ${BHASHA_SECRET_KEY:-}
       BHASHA_LLM_MAX_CALLS_PER_DAY: ${BHASHA_LLM_MAX_CALLS_PER_DAY:-300}
+      BHASHA_SPEECH_URLS: ${BHASHA_SPEECH_URLS:-http://speech:8790}
+      BHASHA_SPEECH_TOKEN: ${BHASHA_SPEECH_TOKEN:?set in .env}
+      BHASHA_AUDIO_CACHE_DIR: /srv/audio
+    volumes:
+      - audio:/srv/audio
     depends_on:
       api:
         condition: service_healthy   # the api runs the migrations first
     healthcheck:
       disable: true
     stop_grace_period: 90s          # lets a running generation finish
+
+  # Text-to-speech on the homelab's CPU (Kokoro). A GPU PC can run the same service
+  # (speech/windows/README.md): list it first in BHASHA_SPEECH_URLS and this one
+  # becomes the fallback when the PC is off.
+  speech:
+    build: ./speech
+    restart: unless-stopped
+    environment:
+      SPEECH_ENGINE: ${SPEECH_ENGINE:-kokoro}
+      SPEECH_DEVICE: cpu
+      SPEECH_TOKEN: ${BHASHA_SPEECH_TOKEN:?set in .env}
+      KOKORO_REPO: ${KOKORO_REPO:-hexgrad/Kokoro-82M}
+    volumes:
+      - speech-models:/models     # Kokoro weights, downloaded once
+    stop_grace_period: 30s
 
   db:
     image: postgres:16-alpine
@@ -65,3 +89,5 @@ services:
 
 volumes:
   pgdata:
+  audio:
+  speech-models:

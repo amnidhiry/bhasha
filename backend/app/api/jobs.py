@@ -63,9 +63,12 @@ def generate(body: GenerateIn, tasks: BackgroundTasks, db: Session = Depends(get
 
 
 @router.get("", response_model=list[JobOut])
-def list_jobs(db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
+def list_jobs(kind: str | None = None, db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
     """Jobs the user should hear about: still running, or finished and not yet seen."""
-    rows = db.scalars(select(Job).where(Job.user_id == user.id, ~Job.seen).order_by(Job.created_at.desc()).limit(20))
+    q = select(Job).where(Job.user_id == user.id, ~Job.seen)
+    if kind:
+        q = q.where(Job.kind == kind)
+    rows = db.scalars(q.order_by(Job.created_at.desc()).limit(20))
     return list(rows)
 
 

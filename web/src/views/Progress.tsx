@@ -3,6 +3,7 @@ import { api, type Progress as P } from "../api";
 import { HandwritingProgress } from "../components/HandwritingProgress";
 import { ModelSettings } from "../components/ModelSettings";
 import { SchedulingCard } from "../components/SchedulingCard";
+import { VoiceCard } from "../components/VoiceCard";
 import { toast } from "../components/Toast";
 import { num, pct } from "../format";
 import { setSettings, useSettings } from "../settings";
@@ -75,6 +76,8 @@ export function Progress() {
       </details>
 
       <SchedulingCard />
+
+      <VoiceCard />
 
       <ModelSettings />
 

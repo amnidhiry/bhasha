@@ -40,5 +40,11 @@ const guess = (f: (t: number) => number) => classify(contour(track(voice(f), SR)
 test("tone 1: level", () => assert.equal(guess(() => 240), 1));
 test("tone 2: rising", () => assert.equal(guess(lerp([[0, 190], [1, 270]])), 2));
 test("tone 3: dipping", () => assert.equal(guess(lerp([[0, 190], [0.5, 150], [1, 220]])), 3));
+// Chao 214 in semitones from a 160 Hz floor: 2 -> 1 -> 4 (the textbook isolated third tone).
+const chao = (l: number) => 160 * 2 ** ((2.2 * (l - 1)) / 12);
+test("tone 3: textbook 214, a short dip then a big rise", () =>
+  assert.equal(guess(lerp([[0, chao(2)], [0.33, chao(1)], [1, chao(4)]])), 3));
+test("tone 2 with a small early dip is still tone 2", () =>
+  assert.equal(guess(lerp([[0, chao(3)], [0.12, chao(2.7)], [1, chao(5)]])), 2));
 test("tone 4: falling", () => assert.equal(guess(lerp([[0, 290], [1, 160]])), 4));
 test("low male voice falling still reads as tone 4", () => assert.equal(guess(lerp([[0, 140], [1, 85]])), 4));

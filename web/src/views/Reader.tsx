@@ -5,7 +5,7 @@ import { LookupSheet, PlayIcon, type LookupTarget } from "../components/LookupSh
 import { toast } from "../components/Toast";
 import { go } from "../router";
 import { setSettings, useSettings, type PinyinMode } from "../settings";
-import { canSpeak, speak } from "../speech";
+import { canSpeak, speakAll } from "../speech";
 import { pct } from "../format";
 
 function Word({ tok, mode, onTap }: { tok: Tok; mode: PinyinMode; onTap: (t: Tok) => void }) {
@@ -146,7 +146,7 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
           </button>
         )}
         {canSpeak() && (
-          <button class="icon-btn" aria-label="Play whole text" onClick={() => speak(doc.tokens.map((t) => t.surface).join(""))}>
+          <button class="icon-btn" aria-label="Play whole text" onClick={() => speakAll(sentences.map((s) => s.map((t) => t.surface).join("").trim()))}>
             <PlayIcon />
           </button>
         )}

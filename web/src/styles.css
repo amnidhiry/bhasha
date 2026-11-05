@@ -476,3 +476,10 @@ details.sub summary { font-weight: 550; color: var(--ink-2); font-size: 0.9rem; 
 .icon-btn.tiny svg { width: 14px; height: 14px; }
 .rv-example { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--rule); }
 .rv-example .rv-sentence { margin-top: 0; }
+
+/* Voice */
+.hosts { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 6px; }
+.hosts li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); flex: none; }
+.dot.on { background: var(--ok); }
+.link-btn.inline { display: inline; padding: 0 4px; font-weight: 500; }

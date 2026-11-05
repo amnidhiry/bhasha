@@ -200,6 +200,25 @@ export interface FsrsStatus {
   }[];
 }
 
+export interface ToneCheck {
+  voice: string;
+  accuracy: number | null;
+  n: number;
+  per_tone: Record<string, number | null>;
+  misses: { key: string; char: string; tone: number; heard: number | null }[];
+  at: string;
+  engine?: string;
+  device?: string;
+}
+
+export interface SpeechStatus {
+  hosts: { url: string; online: boolean; engine?: string; device?: string; voices?: string[] }[];
+  active: string | null;
+  voice: string | null;
+  voices: string[];
+  tone_check: Record<string, ToneCheck>;
+}
+
 export interface Progress {
   known_words: number;
   known_characters: number;
@@ -241,7 +260,7 @@ export const api = {
   text: (id: number) => req<TextDoc>(`/texts/${id}`),
   importText: (title: string, body: string) => post<TextDoc>("/texts/import", { title, body }),
   generate: (b: { topic: string; genre: string; length: string; targets: string[] }) => post<Job>("/jobs/generate", b),
-  jobs: () => req<Job[]>("/jobs"),
+  jobs: (kind?: string) => req<Job[]>(`/jobs${kind ? `?kind=${kind}` : ""}`),
   jobSeen: (id: number) => post<Job>(`/jobs/${id}/seen`, {}),
   jobRetry: (id: number) => post<Job>(`/jobs/${id}/retry`, {}),
   flag: (id: number, sentence: number, note = "") => post<{ flags: unknown[] }>(`/texts/${id}/flag`, { sentence, note }),
@@ -279,6 +298,9 @@ export const api = {
     post<{ applied: string[]; duplicates: string[]; replayed_cards: number[] }>("/reviews", reviews),
   progress: () => req<Progress>("/progress"),
   fsrs: () => req<FsrsStatus>("/fsrs"),
+  speech: () => req<SpeechStatus>("/speech"),
+  speechVoice: (voice: string) => req<SpeechStatus>("/speech/voice", { method: "PUT", body: JSON.stringify({ voice }) }),
+  toneCheck: (voices: string[] = []) => post<{ job_id: number }>("/speech/tone-check", { voices }),
   fsrsFit: () => post<FsrsStatus>("/fsrs/fit", {}),
   fsrsRetention: (desired_retention: number | null) =>
     req<FsrsStatus>("/fsrs/retention", { method: "PUT", body: JSON.stringify({ desired_retention }) }),

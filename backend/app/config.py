@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     chatgpt_redirect_port: int = 1455
     # Recorded audio (Tone Perfect) lives here; see ops/import-data.sh.
     audio_dir: str = "/data/toneperfect"
+    # Speech hosts, tried in order (e.g. a GPU PC first, then the homelab's CPU service).
+    speech_urls: str = ""
+    speech_token: str = ""
+    audio_cache_dir: str = "/srv/audio"
     # Run queued jobs inside the API process (dev without a worker container).
     inline_jobs: bool = False
     chatgpt_auth_url: str = "https://auth.openai.com"

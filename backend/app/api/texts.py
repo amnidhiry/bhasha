@@ -9,6 +9,7 @@ from app.models import AppUser, Exposure, Text
 from app.packs import INSTALLED
 from app.packs.base import WORD
 from app.generator import generate
+from app.jobs import enqueue_render
 from app.llm.errors import DailyCapError, LlmError, NoModelError, PlanLimitError, SignInRequiredError
 from app.reader import create_text, now, serialize_text
 
@@ -36,6 +37,7 @@ def import_text(body: ImportIn, db: Session = Depends(get_db), user: AppUser = D
     if body.language not in INSTALLED:
         raise HTTPException(400, f"no language pack for {body.language!r}")
     text = create_text(db, user.id, body.language, body.title, body.body, "imported", body.source_url)
+    enqueue_render(db, user.id, text.id)
     return serialize_text(db, user.id, text)
 
 

@@ -69,6 +69,7 @@ def _generate(db: Session, job: Job) -> dict:
     p = job.params
     text = generate(db, job.user_id, p.get("topic", ""), p.get("genre", "story"), p.get("length", "medium"),
                     p.get("targets") or [])
+    enqueue_render(db, job.user_id, text.id)
     return {"text_id": text.id, "title": text.title}
 
 
@@ -79,7 +80,59 @@ def _fsrs_fit(db: Session, job: Job) -> dict:
     return {"fit_id": result.id, "status": result.status, "message": result.message}
 
 
-HANDLERS: dict[str, Callable[[Session, Job], dict]] = {"generate": _generate, "fsrs_fit": _fsrs_fit}
+def _render_text(db: Session, job: Job) -> dict:
+    """Pre-render a text's sentences so the reader's audio is instant."""
+    from app.models import Text
+    from app.packs import get_pack
+    from app.speech import SpeechUnavailable, get_clip, hosts
+
+    text = db.get(Text, job.params["text_id"])
+    if text is None or not hosts():
+        return {"rendered": 0}
+    sentences: dict[int, str] = {}
+    for t in get_pack(text.language).analyze(text.body):
+        sentences[t.sentence_index] = sentences.get(t.sentence_index, "") + t.surface
+    rendered = 0
+    for s in sentences.values():
+        s = s.strip()
+        if not s:
+            continue
+        try:
+            get_clip(db, s, RENDER_SPEED)
+            rendered += 1
+        except SpeechUnavailable as e:
+            raise LlmError(f"Audio not rendered: {e}") from e  # shown as the job's message
+    return {"rendered": rendered}
+
+
+def _tone_check(db: Session, job: Job) -> dict:
+    from app.speech import active, put_setting, setting
+    from app.tonecheck import check_voice
+
+    host = active()
+    if host is None:
+        raise LlmError("No speech host is reachable for the tone check.")
+    voices = job.params.get("voices") or host[1].get("voices", [])[:8]
+    results = setting(db, "tone_check")
+    for v in voices:
+        results[v] = {**check_voice(db, v), "engine": host[1].get("engine"), "device": host[1].get("device")}
+        put_setting(db, "tone_check", results)
+    return {"voices": len(voices)}
+
+
+RENDER_SPEED = 0.85  # the speed the PWA asks for when playing sentences and words
+
+
+def enqueue_render(db: Session, user_id: int, text_id: int) -> None:
+    from app.speech import hosts
+
+    if hosts():
+        enqueue(db, user_id, "render_text", {"text_id": text_id})
+
+
+HANDLERS: dict[str, Callable[[Session, Job], dict]] = {
+    "generate": _generate, "fsrs_fit": _fsrs_fit, "render_text": _render_text, "tone_check": _tone_check,
+}
 
 
 def run(db: Session, job: Job) -> Job:

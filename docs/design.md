@@ -393,7 +393,7 @@ There are no native apps. The PWA installs to the Home Screen on iPhone and iPad
 
 ### Deployment
 
-Docker Compose with api, worker, postgres and (later) speech containers, behind your existing Traefik reverse proxy, with the repo on your Forgejo. The speech container can live on whichever host has a GPU; if none, run ASR on CPU and render TTS in the background so audio is ready before you study. Nightly Postgres dumps cover backups; the review log is the irreplaceable part.
+Docker Compose with api, worker, speech (CPU) and postgres containers, plus an optional speech service on a GPU PC elsewhere on the LAN, behind your existing Traefik reverse proxy, with the repo on your Forgejo. The speech container can live on whichever host has a GPU; if none, run ASR on CPU and render TTS in the background so audio is ready before you study. Nightly Postgres dumps cover backups; the review log is the irreplaceable part.
 
 ## Roadmap
 
@@ -415,7 +415,7 @@ The medical track starts only after the core reaches HSK 3 to 4, and a second la
 
 ## Open questions
 
-- Which homelab host has a GPU for TTS, if any? This decides whether audio renders live or in the background.
+- ~~Which homelab host has a GPU for TTS?~~ None on the homelab; a Windows PC on the LAN has an NVIDIA GPU. The speech service runs on the homelab CPU (Kokoro) and optionally on that PC, listed first; audio renders in the background and is cached.
 - Simplified only, or show traditional forms from the start for later travel or reading?
 - Is family use real in the first months? If so, add multi-user auth in phase 0 rather than retrofitting.
 - Which second language pack first, Bengali or Arabic, and for Arabic, MSA or a dialect?

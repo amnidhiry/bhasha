@@ -92,7 +92,9 @@ export function classify(c: number[]): Guess {
   const minPos = x.indexOf(min) / (x.length - 1);
   const range = max - min;
   if (end - start <= -3) return { tone: 4, reason: "It falls steeply." };
-  if (start - min >= 1.5 && end - min >= 1.5 && minPos > 0.2 && minPos < 0.85) return { tone: 3, reason: "It dips, then rises." };
+  // Third tone: the low point comes after the first quarter, with some dip before it
+  // and a rise after. A second tone's dip, if any, is small and early.
+  if (start - min >= 0.7 && end - min >= 1.5 && minPos > 0.25 && minPos < 0.85) return { tone: 3, reason: "It dips, then rises." };
   if (end - start >= 2.5) return { tone: 2, reason: "It rises." };
   if (range < 2) return { tone: 1, reason: "It stays level." };
   return { tone: null, reason: "The shape is unclear. Compare it with the dashed line." };

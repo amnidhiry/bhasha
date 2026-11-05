@@ -355,3 +355,26 @@ class FsrsFit(Base):
     metrics: Mapped[dict] = mapped_column(JSONType, default=dict)
     optimal_retention: Mapped[float | None] = mapped_column(Float)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AudioClip(Base):
+    """Synthesized speech cached on disk (BHASHA_AUDIO_CACHE_DIR), keyed by voice,
+    speed and text, so each sentence or word is rendered once."""
+
+    __tablename__ = "audio_clip"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    text: Mapped[str] = mapped_column(SAText)
+    voice: Mapped[str] = mapped_column(String(64))
+    speed: Mapped[float] = mapped_column(Float)
+    engine: Mapped[str] = mapped_column(String(32))
+    path: Mapped[str] = mapped_column(String(256))
+    size: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class AppSetting(Base):
+    """Small install-wide settings (chosen voice, tone-check results)."""
+
+    __tablename__ = "app_setting"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[dict] = mapped_column(JSONType, default=dict)

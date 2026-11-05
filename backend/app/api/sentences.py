@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import current_user
 from app.db import get_db
+from app.jobs import enqueue_render
 from app.examples import _units_by_sentence, for_unit, serialize, tatoeba_url
 from app.learner import known_unit_ids
 from app.models import AppUser, Card, ExampleSentence, SentenceUnit, Text
@@ -77,4 +78,5 @@ def sentences_text(body: SentencesIn, db: Session = Depends(get_db), user: AppUs
         "attribution": "Sentences from Tatoeba (tatoeba.org), CC BY 2.0 FR",
     }
     db.commit()
+    enqueue_render(db, user.id, text.id)
     return serialize_text(db, user.id, text)

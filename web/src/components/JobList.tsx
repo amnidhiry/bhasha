@@ -14,7 +14,7 @@ export function JobList({ refreshKey, onDone }: { refreshKey: number; onDone: ()
     let live = true;
     let timer: number | undefined;
     const tick = async () => {
-      const list = await api.jobs().catch(() => null);
+      const list = await api.jobs("generate").catch(() => null);
       if (!live || !list) return;
       for (const j of list) {
         const before = known.current.get(j.id);
