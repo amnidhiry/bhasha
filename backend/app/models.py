@@ -390,6 +390,8 @@ class JournalEntry(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"), index=True)
     text: Mapped[str] = mapped_column(SAText)
+    # journal | tutor: a tutor conversation keeps its corrections on an entry of its own
+    source: Mapped[str] = mapped_column(String(16), default="journal")
     prompt: Mapped[dict] = mapped_column(JSONType, default=dict)  # suggested words and idea
     status: Mapped[str] = mapped_column(String(16), default="queued")  # queued | done | failed
     corrected: Mapped[str | None] = mapped_column(SAText)
@@ -413,4 +415,31 @@ class ErrorItem(Base):
     sentence_index: Mapped[int] = mapped_column(Integer)
     unit_id: Mapped[int | None] = mapped_column(ForeignKey("unit.id", ondelete="SET NULL"))
     card_id: Mapped[int | None] = mapped_column(ForeignKey("card.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class TutorSession(Base):
+    """A role-play conversation with the tutor in one scenario."""
+
+    __tablename__ = "tutor_session"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"), index=True)
+    scenario: Mapped[str] = mapped_column(String(48))
+    status: Mapped[str] = mapped_column(String(16), default="active")  # active | ended
+    goal_met: Mapped[bool] = mapped_column(Boolean, default=False)
+    entry_id: Mapped[int | None] = mapped_column(ForeignKey("journal_entry.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class TutorTurn(Base):
+    __tablename__ = "tutor_turn"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("tutor_session.id", ondelete="CASCADE"), index=True)
+    role: Mapped[str] = mapped_column(String(8))  # tutor | learner
+    text: Mapped[str] = mapped_column(SAText)
+    english: Mapped[str | None] = mapped_column(SAText)
+    corrected: Mapped[str | None] = mapped_column(SAText)   # learner turns
+    hint: Mapped[str | None] = mapped_column(SAText)        # tutor turns: what you could say next
+    off_level: Mapped[list] = mapped_column(JSONType, default=list)  # tutor words outside your level
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

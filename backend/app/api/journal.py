@@ -50,7 +50,7 @@ def write(body: EntryIn, tasks: BackgroundTasks, db: Session = Depends(get_db), 
 
 @router.get("")
 def entries(db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
-    rows = db.scalars(select(JournalEntry).where(JournalEntry.user_id == user.id)
+    rows = db.scalars(select(JournalEntry).where(JournalEntry.user_id == user.id, JournalEntry.source == "journal")
                       .order_by(JournalEntry.created_at.desc()).limit(30))
     return {"entries": [_entry(db, e) for e in rows], "categories": category_counts(db, user.id),
             "labels": CATEGORIES}

@@ -53,6 +53,15 @@ function Entry({ e, onRetry }: { e: JournalEntry; onRetry: () => void }) {
   );
 }
 
+export function WriteModes({ active }: { active: "journal" | "talk" }) {
+  return (
+    <nav class="seg mode-switch" aria-label="Write or talk">
+      <a href="#/journal" class={active === "journal" ? "on" : ""} aria-current={active === "journal" ? "page" : undefined}>Journal</a>
+      <a href="#/talk" class={active === "talk" ? "on" : ""} aria-current={active === "talk" ? "page" : undefined}>Talk</a>
+    </nav>
+  );
+}
+
 export function Journal() {
   const [prompt, setPrompt] = useState<{ words: string[]; idea: string } | null>(null);
   const [data, setData] = useState<Awaited<ReturnType<typeof api.journal>> | null>(null);
@@ -98,7 +107,7 @@ export function Journal() {
   const cats = data ? Object.entries(data.categories) : [];
   return (
     <main class="page">
-      <header class="page-head"><h1>Write</h1></header>
+      <header class="page-head"><h1>Write</h1><WriteModes active="journal" /></header>
       <form class="card form" onSubmit={submit}>
         {prompt && (
           <div class="jr-prompt">

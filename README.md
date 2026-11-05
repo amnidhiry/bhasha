@@ -8,6 +8,11 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 
 ### Phase 1 PWA (in progress)
 
+- [x] Tutor (Write → Talk): role-play scenarios (ordering food, directions, shopping, taxi, meeting someone, booking
+      by phone, seeing a doctor, free chat) with a goal and a twist. Replies are checked against your known and
+      level words and rewritten once if they stray; your messages are corrected inline and mistakes become cloze
+      cards through the journal's pipeline. Pinyin over unfamiliar words, tap to look up, audio, English and a hint
+
 - [x] Journal (Write tab): write a few sentences with a daily idea and your recent words; the model corrects them in
       the background with a minimal fix, English and one-line explanations per mistake. Each mistake is checked
       against your text before it counts, then becomes a fill-in (cloze) review card from your corrected sentence.

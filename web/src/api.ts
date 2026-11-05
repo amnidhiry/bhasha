@@ -234,6 +234,29 @@ export interface JournalEntry {
     sentence_index: number; card_id: number | null }[];
 }
 
+export interface TutorScenario { id: string; title: string; title_zh: string; setting: string; goal: string; role: string; completed?: number }
+
+export interface TutorTurn {
+  id: number;
+  role: "tutor" | "learner";
+  text: string;
+  english: string | null;
+  tokens?: Tok[];
+  hint?: string | null;
+  off_level?: string[];
+  corrected?: string | null;
+  errors?: { category: string; label: string; wrong: string; right: string; explanation: string; card_id: number | null }[];
+}
+
+export interface TutorSession {
+  id: number;
+  scenario: TutorScenario;
+  status: "active" | "ended";
+  goal_met: boolean;
+  turns: TutorTurn[];
+  mistakes: number;
+}
+
 export interface Progress {
   known_words: number;
   known_characters: number;
@@ -313,6 +336,12 @@ export const api = {
     post<{ applied: string[]; duplicates: string[]; replayed_cards: number[] }>("/reviews", reviews),
   progress: () => req<Progress>("/progress"),
   fsrs: () => req<FsrsStatus>("/fsrs"),
+  tutorScenarios: () => req<TutorScenario[]>("/tutor/scenarios"),
+  tutorSessions: () => req<{ id: number; scenario: TutorScenario; status: string; goal_met: boolean; created_at: string }[]>("/tutor/sessions"),
+  tutorStart: (scenario: string) => post<TutorSession>("/tutor/sessions", { scenario }),
+  tutorSession: (id: number) => req<TutorSession>(`/tutor/sessions/${id}`),
+  tutorSay: (id: number, text: string) => post<TutorSession>(`/tutor/sessions/${id}/turns`, { text }),
+  tutorEnd: (id: number) => post<TutorSession>(`/tutor/sessions/${id}/end`, {}),
   journalPrompt: () => req<{ words: string[]; idea: string }>("/journal/prompt"),
   journal: () => req<{ entries: JournalEntry[]; categories: Record<string, number>; labels: Record<string, string> }>("/journal"),
   journalEntry: (id: number) => req<JournalEntry>(`/journal/${id}`),

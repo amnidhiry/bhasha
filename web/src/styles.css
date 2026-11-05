@@ -505,3 +505,44 @@ details.sub summary { font-weight: 550; color: var(--ink-2); font-size: 0.9rem; 
 .rv-cloze .filled { color: var(--ok); border-bottom: 2px solid var(--ok); }
 
 .form-foot .btn { white-space: nowrap; flex: none; }
+
+/* Tutor */
+.mode-switch a { display: inline-grid; place-items: center; padding: 0 14px; min-height: 34px; text-decoration: none; color: var(--ink-2); font-size: 0.85rem; }
+.mode-switch a.on { background: var(--ink); color: var(--paper); }
+.scenario-list { list-style: none; padding: 0; margin: 0; }
+.scenario { display: grid; gap: 10px; }
+.scenario h2 { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.scenario p { margin: 2px 0; }
+.scenario .btn { justify-self: start; }
+.talk { padding-bottom: calc(var(--tab-h) + 120px + env(safe-area-inset-bottom)); }
+.talk-head { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0 8px; }
+.talk-head h1 { font-size: 1.25rem; }
+.talk-head p { margin: 2px 0 0; }
+.goal-banner { background: color-mix(in srgb, var(--ok) 14%, var(--paper-2)); color: var(--ok); border-radius: 10px; padding: 8px 12px; font-weight: 600; }
+.chat { list-style: none; padding: 0; margin: 12px 0; display: grid; gap: 10px; }
+.bubble { max-width: 88%; padding: 10px 14px; border-radius: 16px; border: 1px solid var(--rule); }
+.bubble p { margin: 2px 0; }
+.bubble.theirs { background: var(--paper-2); justify-self: start; border-bottom-left-radius: 4px; }
+.bubble.mine { background: var(--accent-soft); border-color: transparent; justify-self: end; border-bottom-right-radius: 4px; }
+.bubble.mine p { font: 1.1rem/1.7 var(--serif-zh); }
+.bubble.mine .bubble-note { font: 0.85rem/1.5 var(--sans); }
+.bubble-zh { font: 1.3rem/2.1 var(--serif-zh); }
+.bubble-tools { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+.bubble-tools .link-btn.on { color: var(--accent); }
+.bubble-hint { background: var(--paper); border-radius: 8px; padding: 6px 8px; }
+.typing { display: flex; gap: 4px; padding: 14px; }
+.typing span { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-3); animation: blink 1.2s infinite; }
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes blink { 0%, 80%, 100% { opacity: 0.25; } 40% { opacity: 1; } }
+.chat-input {
+  position: fixed; left: 0; right: 0; bottom: calc(var(--tab-h) + env(safe-area-inset-bottom)); z-index: 9;
+  display: flex; gap: 6px; padding: 10px 12px; background: var(--paper); border-top: 1px solid var(--rule);
+  max-width: 720px; margin: 0 auto;
+}
+.chat-input input {
+  flex: 1; min-width: 0; font: 1.05rem var(--serif-zh); color: var(--ink); background: var(--paper-2);
+  border: 1px solid var(--rule); border-radius: 999px; padding: 0 14px; min-height: 44px;
+}
+.talk-summary { text-align: center; }
+.autoplay { justify-content: center; color: var(--ink-3); }

@@ -123,40 +123,51 @@ def _unit_for(db: Session, right: str, category: str) -> Unit:
     return unit
 
 
-def apply_correction(db: Session, entry: JournalEntry, data: dict) -> list[ErrorItem]:
-    sentences, items = [], []
-    for i, s in enumerate(data.get("sentences") or []):
-        original, corrected = str(s.get("original", "")).strip(), str(s.get("corrected", "")).strip()
-        if not original:
-            continue
-        corrected = corrected or original
-        sentences.append({"original": original, "corrected": corrected, "english": str(s.get("english", "")).strip()})
-        if corrected == original:
-            continue  # the model listed errors but changed nothing: trust the text, not the list
-        for e in s.get("errors") or []:
-            cat = e.get("category") if e.get("category") in CATEGORIES else "grammar"
-            wrong, right = str(e.get("wrong", "")).strip(), str(e.get("right", "")).strip()
-            if (wrong and wrong not in original) or (right and right not in corrected) or (not wrong and not right) \
-                    or wrong == right:
-                continue
-            item = ErrorItem(entry_id=entry.id, user_id=entry.user_id, category=cat, wrong=wrong[:128],
-                             right=right[:128], explanation=str(e.get("explanation", "")).strip()[:500],
-                             sentence_index=len(sentences) - 1)
-            db.add(item)
-            db.flush()
-            if right and len(right) <= MAX_CLOZE_CHARS:
-                unit = _unit_for(db, right, cat)
-                item.unit_id = unit.id
-                card = Card(user_id=entry.user_id, unit_id=unit.id, facet=f"cloze:{item.id}",
-                            due=datetime.now(timezone.utc), context_sentence=corrected,
-                            cloze={"sentence": corrected, "answer": right, "wrong": wrong, "category": cat,
-                                   "explanation": item.explanation, "english": sentences[-1]["english"]})
-                db.add(card)
-                db.flush()
-                item.card_id = card.id
-            items.append(item)
+def record_sentence(db: Session, entry: JournalEntry, original: str, corrected: str, english: str,
+                    errors: list[dict]) -> list[ErrorItem]:
+    """Append one corrected sentence to `entry` and turn its verified errors into
+    error items and cloze cards. Shared by the journal and the tutor."""
+    original, corrected = original.strip(), (corrected or original).strip()
+    sentences = list(entry.sentences or [])
+    sentences.append({"original": original, "corrected": corrected, "english": english.strip()})
     entry.sentences = sentences
-    entry.corrected = "".join(s["corrected"] for s in sentences)
+    index = len(sentences) - 1
+    items: list[ErrorItem] = []
+    if corrected == original:
+        return items  # the model listed errors but changed nothing: trust the text, not the list
+    for e in errors or []:
+        cat = e.get("category") if e.get("category") in CATEGORIES else "grammar"
+        wrong, right = str(e.get("wrong", "")).strip(), str(e.get("right", "")).strip()
+        if (wrong and wrong not in original) or (right and right not in corrected) or (not wrong and not right) \
+                or wrong == right:
+            continue
+        item = ErrorItem(entry_id=entry.id, user_id=entry.user_id, category=cat, wrong=wrong[:128],
+                         right=right[:128], explanation=str(e.get("explanation", "")).strip()[:500],
+                         sentence_index=index)
+        db.add(item)
+        db.flush()
+        if right and len(right) <= MAX_CLOZE_CHARS:
+            unit = _unit_for(db, right, cat)
+            item.unit_id = unit.id
+            card = Card(user_id=entry.user_id, unit_id=unit.id, facet=f"cloze:{item.id}",
+                        due=datetime.now(timezone.utc), context_sentence=corrected,
+                        cloze={"sentence": corrected, "answer": right, "wrong": wrong, "category": cat,
+                               "explanation": item.explanation, "english": english.strip()})
+            db.add(card)
+            db.flush()
+            item.card_id = card.id
+        items.append(item)
+    return items
+
+
+def apply_correction(db: Session, entry: JournalEntry, data: dict) -> list[ErrorItem]:
+    entry.sentences = []
+    items: list[ErrorItem] = []
+    for s in data.get("sentences") or []:
+        if str(s.get("original", "")).strip():
+            items += record_sentence(db, entry, str(s.get("original", "")), str(s.get("corrected", "")),
+                                     str(s.get("english", "")), s.get("errors") or [])
+    entry.corrected = "".join(s["corrected"] for s in entry.sentences)
     entry.comment = str(data.get("comment", "")).strip() or None
     entry.status = "done"
     db.commit()
