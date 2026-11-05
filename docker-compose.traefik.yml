@@ -1,0 +1,11 @@
+# Optional overlay: docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
+# Joins the api to your existing Traefik network and stops publishing the port.
+services:
+  api:
+    ports: !reset []
+    networks: [default, proxy]
+
+networks:
+  proxy:
+    external: true
+    name: ${TRAEFIK_NETWORK:-proxy}

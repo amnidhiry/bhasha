@@ -1,0 +1,222 @@
+"""Core tables. Language-specific meaning lives in `unit.type` values that a pack
+defines, so Bengali conjuncts or Arabic roots fit beside Mandarin characters.
+
+Every per-learner table carries `user_id` from day one so family use does not
+need a retrofit (open question in docs/design.md)."""
+
+from datetime import datetime, timezone
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.db import Base
+
+JSONType = JSON().with_variant(JSONB(), "postgresql")
+
+
+def utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class AppUser(Base):
+    __tablename__ = "app_user"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(80), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Language(Base):
+    __tablename__ = "language"
+    code: Mapped[str] = mapped_column(String(16), primary_key=True)
+    name: Mapped[str] = mapped_column(String(80))
+
+
+class PackVersion(Base):
+    """Which data sources are loaded for a language, and at which version."""
+
+    __tablename__ = "pack_version"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    language: Mapped[str] = mapped_column(ForeignKey("language.code"))
+    component: Mapped[str] = mapped_column(String(64))  # e.g. cc-cedict, hsk, makemeahanzi
+    version: Mapped[str] = mapped_column(String(64))
+    imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    __table_args__ = (UniqueConstraint("language", "component", "version"),)
+
+
+class Unit(Base):
+    """Anything a learner can know: word, character, component, phrase, grammar point, root."""
+
+    __tablename__ = "unit"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    language: Mapped[str] = mapped_column(ForeignKey("language.code"))
+    type: Mapped[str] = mapped_column(String(32))
+    headword: Mapped[str] = mapped_column(String(128))
+    # Reading is stored per word, never per character (polyphones). For zh this is
+    # citation-tone numeric pinyin, e.g. "yin2 hang2".
+    reading: Mapped[str] = mapped_column(String(256), default="")
+    traditional: Mapped[str | None] = mapped_column(String(128))
+    level_tags: Mapped[list] = mapped_column(JSONType, default=list)  # e.g. ["hsk3-2025:1"]
+    frequency_rank: Mapped[int | None] = mapped_column(Integer)
+    register: Mapped[str | None] = mapped_column(String(16))  # lay | clinical
+    track_tags: Mapped[list] = mapped_column(JSONType, default=list)  # everyday | medical
+    extra: Mapped[dict] = mapped_column(JSONType, default=dict)  # classifiers, pos, decomposition...
+
+    __table_args__ = (
+        UniqueConstraint("language", "type", "headword", "reading"),
+        Index("ix_unit_lookup", "language", "headword"),
+    )
+
+
+class UnitRelation(Base):
+    __tablename__ = "unit_relation"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    parent_id: Mapped[int] = mapped_column(ForeignKey("unit.id", ondelete="CASCADE"))
+    child_id: Mapped[int] = mapped_column(ForeignKey("unit.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(32))  # contains | lay_equivalent | derives_from
+    position: Mapped[int | None] = mapped_column(Integer)
+    __table_args__ = (UniqueConstraint("parent_id", "child_id", "kind", "position"),)
+
+
+class CedictEntry(Base):
+    """CC-CEDICT is CC BY-SA, so it lives in its own table and is attributed in the UI."""
+
+    __tablename__ = "cedict_entry"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    traditional: Mapped[str] = mapped_column(String(128))
+    simplified: Mapped[str] = mapped_column(String(128), index=True)
+    pinyin: Mapped[str] = mapped_column(String(256))  # numeric, lowercase, u: -> v
+    glosses: Mapped[list] = mapped_column(JSONType)
+
+
+class CharacterInfo(Base):
+    """Make Me a Hanzi dictionary data (decomposition, radical, etymology)."""
+
+    __tablename__ = "character_info"
+    character: Mapped[str] = mapped_column(String(8), primary_key=True)
+    definition: Mapped[str | None] = mapped_column(Text)
+    pinyin: Mapped[list] = mapped_column(JSONType, default=list)
+    decomposition: Mapped[str | None] = mapped_column(String(64))
+    radical: Mapped[str | None] = mapped_column(String(8))
+    etymology: Mapped[dict | None] = mapped_column(JSONType)
+
+
+class UnitMark(Base):
+    """Manual marks: words learned elsewhere, or placement-check bulk marks."""
+
+    __tablename__ = "unit_mark"
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"), primary_key=True)
+    unit_id: Mapped[int] = mapped_column(ForeignKey("unit.id", ondelete="CASCADE"), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16))  # known | ignored
+    marked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Card(Base):
+    """One FSRS card per unit facet (meaning, reading, listening, tone, ...)."""
+
+    __tablename__ = "card"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    unit_id: Mapped[int] = mapped_column(ForeignKey("unit.id", ondelete="CASCADE"))
+    facet: Mapped[str] = mapped_column(String(32))
+    state: Mapped[int] = mapped_column(Integer, default=1)  # fsrs.State: 1 learning, 2 review, 3 relearning
+    step: Mapped[int | None] = mapped_column(Integer, default=0)
+    stability: Mapped[float | None] = mapped_column(Float)
+    difficulty: Mapped[float | None] = mapped_column(Float)
+    due: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_review: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    suspended: Mapped[bool] = mapped_column(Boolean, default=False)
+    lapses: Mapped[int] = mapped_column(Integer, default=0)
+    context_sentence: Mapped[str | None] = mapped_column(Text)
+    source_text_id: Mapped[int | None] = mapped_column(ForeignKey("text.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    unit: Mapped[Unit] = relationship(lazy="joined")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "unit_id", "facet"),
+        Index("ix_card_due", "user_id", "suspended", "due"),
+    )
+
+
+class ReviewLog(Base):
+    """Every review, scheduled or not. The irreplaceable table: back it up.
+
+    `id` is generated by the client so batch sync from offline clients is idempotent."""
+
+    __tablename__ = "review_log"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    card_id: Mapped[int] = mapped_column(ForeignKey("card.id", ondelete="CASCADE"), index=True)
+    rating: Mapped[int] = mapped_column(Integer)  # 1 again, 2 hard, 3 good, 4 easy
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    duration_ms: Mapped[int | None] = mapped_column(Integer)
+    source: Mapped[str] = mapped_column(String(32), default="queue")  # queue | reader_lookup | handwriting
+    scheduled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class Text(Base):
+    __tablename__ = "text"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    language: Mapped[str] = mapped_column(ForeignKey("language.code"))
+    title: Mapped[str] = mapped_column(String(256))
+    body: Mapped[str] = mapped_column(Text)
+    provenance: Mapped[str] = mapped_column(String(32))  # imported | generated | tatoeba
+    source_url: Mapped[str | None] = mapped_column(String(1024))
+    coverage_at_creation: Mapped[float | None] = mapped_column(Float)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    tokens: Mapped[list["TextToken"]] = relationship(
+        order_by="TextToken.position", cascade="all, delete-orphan"
+    )
+
+
+class TextToken(Base):
+    __tablename__ = "text_token"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    text_id: Mapped[int] = mapped_column(ForeignKey("text.id", ondelete="CASCADE"), index=True)
+    position: Mapped[int] = mapped_column(Integer)
+    sentence_index: Mapped[int] = mapped_column(Integer)
+    surface: Mapped[str] = mapped_column(String(128))
+    kind: Mapped[str] = mapped_column(String(16))  # word | proper | number | punct | other
+    unit_id: Mapped[int | None] = mapped_column(ForeignKey("unit.id", ondelete="SET NULL"))
+
+
+class Exposure(Base):
+    """A unit seen in a text. Weak evidence: never counted as a successful review."""
+
+    __tablename__ = "exposure"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    unit_id: Mapped[int] = mapped_column(ForeignKey("unit.id", ondelete="CASCADE"))
+    text_id: Mapped[int | None] = mapped_column(ForeignKey("text.id", ondelete="SET NULL"))
+    looked_up: Mapped[bool] = mapped_column(Boolean, default=False)
+    seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    __table_args__ = (Index("ix_exposure_user_unit", "user_id", "unit_id"),)
+
+
+class LlmCall(Base):
+    __tablename__ = "llm_call"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("app_user.id", ondelete="SET NULL"))
+    feature: Mapped[str] = mapped_column(String(64))
+    model: Mapped[str] = mapped_column(String(64))
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cache_read_tokens: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd: Mapped[float] = mapped_column(Numeric(10, 6), default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

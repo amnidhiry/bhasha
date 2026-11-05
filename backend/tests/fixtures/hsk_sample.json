@@ -1,0 +1,15 @@
+[
+ {"simplified":"我","radical":"戈","level":["newest-1","new-1","old-1"],"frequency":10,"pos":["r"],
+  "forms":[{"traditional":"我","transcriptions":{"numeric":"wo3"},"meanings":["I; me"],"classifiers":[]}]},
+ {"simplified":"在","radical":"土","level":["newest-1","new-1","old-1"],"frequency":8,"pos":["p"],
+  "forms":[{"traditional":"在","transcriptions":{"numeric":"zai4"},"meanings":["at; in"],"classifiers":[]}]},
+ {"simplified":"工作","radical":"工","level":["newest-1","new-1","old-1"],"frequency":120,"pos":["n","v"],
+  "forms":[{"traditional":"工作","transcriptions":{"numeric":"gong1 zuo4"},"meanings":["to work","job"],"classifiers":["个","份"]}]},
+ {"simplified":"朋友","radical":"月","level":["newest-1","new-1","old-1"],"frequency":300,"pos":["n"],
+  "forms":[{"traditional":"朋友","transcriptions":{"numeric":"peng2 you5"},"meanings":["friend"],"classifiers":["个","位"]}]},
+ {"simplified":"银行","radical":"钅","level":["newest-3","new-2","old-3"],"frequency":2000,"pos":["n"],
+  "forms":[{"traditional":"銀行","transcriptions":{"numeric":"yin2 hang2"},"meanings":["bank"],"classifiers":["家","个"]}]},
+ {"simplified":"行","radical":"行","level":["newest-3","new-1","old-4"],"frequency":200,"pos":["v"],
+  "forms":[{"traditional":"行","transcriptions":{"numeric":"hang2"},"meanings":["row"],"classifiers":[]},
+           {"traditional":"行","transcriptions":{"numeric":"xing2"},"meanings":["to walk","OK"],"classifiers":[]}]}
+]

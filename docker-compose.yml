@@ -1,0 +1,44 @@
+# Phase 0: api + postgres. The worker (arq on redis) and speech services arrive
+# in phase 1 with the generator and TTS; see docs/design.md "Architecture".
+name: bhasha
+
+services:
+  api:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      BHASHA_DATABASE_URL: postgresql+psycopg://bhasha:${POSTGRES_PASSWORD:?set in .env}@db:5432/bhasha
+      BHASHA_TIMEZONE: ${BHASHA_TIMEZONE:-UTC}
+    volumes:
+      - ./data:/data:ro           # source datasets for the importers
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${BHASHA_PORT:-8000}:8000"
+    labels:
+      # Behind an existing Traefik: set TRAEFIK_ENABLE=true and BHASHA_HOST in .env,
+      # and attach this service to Traefik's network (see docker-compose.traefik.yml).
+      - traefik.enable=${TRAEFIK_ENABLE:-false}
+      - traefik.http.routers.bhasha.rule=Host(`${BHASHA_HOST:-bhasha.localhost}`)
+      - traefik.http.routers.bhasha.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.bhasha.tls=true
+      - traefik.http.services.bhasha.loadbalancer.server.port=8000
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bhasha
+      POSTGRES_DB: bhasha
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bhasha -d bhasha"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
