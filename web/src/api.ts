@@ -310,3 +310,104 @@ export const api = {
   drill: (drill: string, n = 10) => req<DrillItem[]>(`/bootcamp/drill?drill=${encodeURIComponent(drill)}&n=${n}`),
   drillAttempt: (a: { drill: string; item: string; answer: string; correct: boolean }) => post<Bootcamp>("/bootcamp/attempts", [a]),
 };
+
+// --- Importer (links, EPUB, subtitles, Jellyfin) ---------------------------
+
+export interface ImportConfig {
+  sources: string[];
+  jellyfin: boolean;
+  max_url_bytes: number;
+  max_epub_bytes: number;
+  max_subtitle_bytes: number;
+  part_characters: number;
+}
+
+export interface ImportPart {
+  title: string;
+  body: string;
+  characters: number;
+  coverage: number | null;
+  new_words: number;
+}
+
+/** A text scored against what you know, not saved yet. */
+export interface ImportPreview {
+  kind: string;
+  title: string;
+  source_url: string | null;
+  meta: Record<string, unknown>;
+  warnings: string[];
+  characters: number;
+  coverage: number | null;
+  new_words: number;
+  parts: ImportPart[];
+}
+
+export interface EpubChapter {
+  index: number;
+  title: string;
+  characters: number;
+  excerpt: string;
+}
+
+export interface EpubBook {
+  title: string;
+  author: string | null;
+  chapters: EpubChapter[];
+}
+
+export interface JellyfinItem {
+  id: string;
+  name: string;
+  type: string; // Movie | Episode | Series
+  chinese_subtitles?: number | null;
+}
+
+export interface JellyfinSubtitle {
+  index: number;
+  media_source_id: string;
+  language: string | null;
+  title: string;
+  codec: string | null;
+  external: boolean;
+  default: boolean;
+  chinese: boolean;
+  text: boolean;
+}
+
+/** Multipart upload: the browser sets the boundary, so no JSON content type. */
+async function upload<T>(path: string, fields: Record<string, string | Blob>): Promise<T> {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  const res = await fetch(`/api${path}`, { method: "POST", body: form });
+  if (!res.ok) {
+    let msg = res.status === 413 ? "That file is too large." : res.statusText;
+    try {
+      const body = await res.json();
+      msg = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+    } catch {
+      /* not json */
+    }
+    throw new ApiError(res.status, msg);
+  }
+  return res.json() as Promise<T>;
+}
+
+export const importApi = {
+  config: () => req<ImportConfig>("/import/config"),
+  url: (url: string) => post<ImportPreview>("/import/url/preview", { url }),
+  epubChapters: (file: File) => upload<EpubBook>("/import/epub/chapters", { file }),
+  epub: (file: File, start: number, end: number) =>
+    upload<ImportPreview>("/import/epub/preview", { file, start: String(start), end: String(end) }),
+  subtitles: (file: File, title = "") => upload<ImportPreview>("/import/subtitles/preview", { file, title }),
+  jellyfinSearch: (q: string) => req<JellyfinItem[]>(`/import/jellyfin/search?q=${encodeURIComponent(q)}`),
+  jellyfinEpisodes: (seriesId: string) =>
+    req<JellyfinItem[]>(`/import/jellyfin/series/${encodeURIComponent(seriesId)}/episodes`),
+  jellyfinSubtitles: (itemId: string) =>
+    req<{ id: string; name: string; subtitles: JellyfinSubtitle[] }>(
+      `/import/jellyfin/items/${encodeURIComponent(itemId)}/subtitles`),
+  jellyfin: (item_id: string, index: number, media_source_id: string) =>
+    post<ImportPreview>("/import/jellyfin/preview", { item_id, index, media_source_id }),
+  save: (p: { kind: string; source_url: string | null; meta: Record<string, unknown>; parts: { title: string; body: string }[] }) =>
+    post<{ texts: { id: number; title: string; coverage_at_creation: number | null }[] }>("/import/texts", p),
+};
