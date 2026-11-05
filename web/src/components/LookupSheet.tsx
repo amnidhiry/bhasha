@@ -3,6 +3,7 @@ import { api, type Lookup, type Status, type Syllable } from "../api";
 import { speak, canSpeak } from "../speech";
 import { levelLabel } from "../tones";
 import { Pinyin } from "./Pinyin";
+import { ExplainBox } from "./ExplainBox";
 import { Sheet } from "./Sheet";
 import { toast } from "./Toast";
 
@@ -171,6 +172,8 @@ export function LookupSheet({ target, onClose, onChanged }: {
           ))}
         </div>
       )}
+
+      {target.sentence && <ExplainBox key={`${target.sentence}|${target.surface}`} sentence={target.sentence} focus={target.surface} />}
 
       {target.sentence && canSpeak() && (
         <button class="link-btn" onClick={() => speak(target.sentence)}>

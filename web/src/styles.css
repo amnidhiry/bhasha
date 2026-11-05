@@ -658,3 +658,13 @@ details.sub summary { font-weight: 550; color: var(--ink-2); font-size: 0.9rem; 
 .ch-part { display: inline-flex; gap: 4px; align-items: center; margin-right: 10px; }
 .mnemonic { background: var(--learning); color: var(--learning-ink); border-radius: 10px; padding: 10px 12px; }
 .ex-zh-inline { font: 1.05rem var(--serif-zh); cursor: pointer; }
+
+/* Explain this */
+.explain { display: grid; gap: 8px; margin: 10px 0; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 12px; }
+.explain-sentence { font: 1.15rem/1.7 var(--serif-zh); margin: 0; }
+.explain-answer p { margin: 6px 0; }
+.chunks { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.chunks li { display: grid; padding: 4px 8px; border-radius: 8px; background: var(--paper); border: 1px solid var(--rule); }
+.chunks li span { font: 1.1rem var(--serif-zh); }
+.chunks li small { color: var(--ink-2); font-size: 0.72rem; }
+.wiki-link { margin-right: 10px; }

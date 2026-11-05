@@ -440,6 +440,9 @@ export const api = {
   speech: () => req<SpeechStatus>("/speech"),
   speechVoice: (voice: string) => req<SpeechStatus>("/speech/voice", { method: "PUT", body: JSON.stringify({ voice }) }),
   toneCheck: (voices: string[] = []) => post<{ job_id: number }>("/speech/tone-check", { voices }),
+  explain: (sentence: string, question: string, focus?: string) =>
+    post<{ answer: string; chunks: { zh: string; role: string }[]; points: { name: string; url: string }[] }>(
+      "/explain", { sentence, question, focus }),
   cardHelp: (id: number) => req<CardHelp>(`/cards/${id}/help`),
   cardMnemonic: (id: number) => post<{ mnemonic: string }>(`/cards/${id}/mnemonic`, {}),
   cardSuspend: (id: number, suspended = true) => post<{ suspended: boolean }>(`/cards/${id}/suspend`, { suspended }),
