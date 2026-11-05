@@ -1,4 +1,0 @@
-# Lute-style segmentation exceptions for jieba (one per line, parts split by '|').
-# Use these when jieba over-merges a phrase into one "word" that should be learned
-# as separate units. Per-text manual fixes in the reader should append here.
-一|个|人
