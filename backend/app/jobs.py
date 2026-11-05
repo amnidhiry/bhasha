@@ -69,6 +69,15 @@ def _generate(db: Session, job: Job) -> dict:
     p = job.params
     text = generate(db, job.user_id, p.get("topic", ""), p.get("genre", "story"), p.get("length", "medium"),
                     p.get("targets") or [])
+    if p.get("pre_teach_for"):
+        from app.models import Text
+
+        source = db.get(Text, p["pre_teach_for"])
+        if source is not None:
+            text.title = f"热身 · Warm-up for {source.title}"[:256]
+            text.meta = {**(text.meta or {}), "pre_teach_for": {"id": source.id, "title": source.title}}
+            source.meta = {**(source.meta or {}), "pre_teach": {"id": text.id, "words": p.get("targets") or []}}
+            db.commit()
     enqueue_render(db, job.user_id, text.id)
     return {"text_id": text.id, "title": text.title}
 

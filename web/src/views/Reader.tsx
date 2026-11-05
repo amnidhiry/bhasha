@@ -49,12 +49,19 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
   const looked = useRef(new Set<number>());
   const [showEn, setShowEn] = useState(false);
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
+  const [warmup, setWarmup] = useState<{ words: string[]; unknown: number } | null>(null);
+  const [warmupQueued, setWarmupQueued] = useState(false);
   const settings = useSettings();
 
   const load = useCallback(() => {
     api.text(id).then(setDoc).catch((e) => setError(e.message));
   }, [id]);
   useEffect(load, [load]);
+  useEffect(() => {
+    // Hard imported texts get a warm-up offer built from their most useful new words.
+    if (!doc || !["imported", "tatoeba"].includes(doc.provenance) || (doc.coverage_now ?? 1) >= 0.95 || doc.meta?.pre_teach) return;
+    api.preTeachSuggestion(id).then((s) => setWarmup(s.words.length >= 2 ? s : null)).catch(() => {});
+  }, [doc?.id]);
 
   const sentences = useMemo(() => {
     const out: Tok[][] = [];
@@ -152,6 +159,24 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
         )}
       </div>
 
+      {doc.meta?.pre_teach && (
+        <p class="warmup small"><a href={`#/read/${doc.meta.pre_teach.id}`}>Read the warm-up first</a>: it uses{" "}
+          <span lang="zh-CN">{doc.meta.pre_teach.words.join("、")}</span>.</p>
+      )}
+      {warmup && !doc.meta?.pre_teach && (
+        <div class="warmup">
+          <p class="small">
+            {warmup.unknown} new words here. Warm up first with a short, easy text using the most useful ones:{" "}
+            <span lang="zh-CN">{warmup.words.join("、")}</span>.
+          </p>
+          <button class="btn" disabled={warmupQueued} onClick={() => api.preTeach(id)
+            .then(() => { setWarmupQueued(true); toast("Writing your warm-up; it'll appear in the library."); })
+            .catch((e) => toast((e as Error).message))}>
+            {warmupQueued ? "Writing…" : "Write a warm-up"}
+          </button>
+        </div>
+      )}
+
       <article class="reading" lang="zh-CN">
         {sentences.map((s, i) => {
           const g = showEn ? translationAfter(s[0].sentence_index) : null;
@@ -219,6 +244,9 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
         </section>
       )}
 
+      {doc.meta?.pre_teach_for && (
+        <p class="warmup small">Warmed up? Now read <a href={`#/read/${doc.meta.pre_teach_for.id}`} lang="zh-CN">{doc.meta.pre_teach_for.title}</a>.</p>
+      )}
       <footer class="reader-foot">
         {doc.finished_at ? (
           <p class="muted">Read before. Finishing again logs another encounter with each word.</p>

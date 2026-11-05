@@ -668,3 +668,7 @@ details.sub summary { font-weight: 550; color: var(--ink-2); font-size: 0.9rem; 
 .chunks li span { font: 1.1rem var(--serif-zh); }
 .chunks li small { color: var(--ink-2); font-size: 0.72rem; }
 .wiki-link { margin-right: 10px; }
+
+/* Pre-teaching */
+.warmup { background: var(--paper-2); border: 1px solid var(--rule); border-radius: 12px; padding: 10px 12px; margin: 10px 0; display: grid; gap: 8px; justify-items: start; }
+.warmup p { margin: 0; }

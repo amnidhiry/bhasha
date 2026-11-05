@@ -25,6 +25,8 @@ export interface TextMeta {
   title_en?: string;
   sentences?: { zh: string; en: string; id?: number; url?: string }[];
   attribution?: string;
+  pre_teach?: { id: number; words: string[] };
+  pre_teach_for?: { id: number; title: string };
   sentence_map?: number[];
   questions?: { question_zh: string; question_en: string; answer_en: string }[];
   targets?: string[];
@@ -440,6 +442,9 @@ export const api = {
   speech: () => req<SpeechStatus>("/speech"),
   speechVoice: (voice: string) => req<SpeechStatus>("/speech/voice", { method: "PUT", body: JSON.stringify({ voice }) }),
   toneCheck: (voices: string[] = []) => post<{ job_id: number }>("/speech/tone-check", { voices }),
+  preTeachSuggestion: (id: number) =>
+    req<{ words: string[]; unknown: number; existing: { id: number; words: string[] } | null }>(`/texts/${id}/pre-teach`),
+  preTeach: (id: number) => post<{ job_id: number; words: string[] }>(`/texts/${id}/pre-teach`, {}),
   explain: (sentence: string, question: string, focus?: string) =>
     post<{ answer: string; chunks: { zh: string; role: string }[]; points: { name: string; url: string }[] }>(
       "/explain", { sentence, question, focus }),
