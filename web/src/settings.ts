@@ -5,10 +5,12 @@ export interface Settings {
   pinyin: PinyinMode;
   toneColors: boolean;
   fontScale: number;
+  /** Ignore finger touches on the writing pad (palm rejection). Turned on the first time a Pencil is seen. */
+  pencilOnly: boolean;
 }
 
 const KEY = "bhasha.settings.v1";
-const DEFAULTS: Settings = { pinyin: "unknown", toneColors: true, fontScale: 1 };
+const DEFAULTS: Settings = { pinyin: "unknown", toneColors: true, fontScale: 1, pencilOnly: false };
 
 function load(): Settings {
   try {
@@ -20,6 +22,8 @@ function load(): Settings {
 
 let current = load();
 const listeners = new Set<(s: Settings) => void>();
+
+export const getSettings = () => current;
 
 export function setSettings(patch: Partial<Settings>) {
   current = { ...current, ...patch };

@@ -8,6 +8,14 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 
 ### Phase 1 PWA (in progress)
 
+- [x] Handwriting track: Review → Writing is its own daily session (separate caps: 5 new, 40 total). You write
+      from memory on a 田字格 grid with Hanzi Writer; mistakes map to a suggested rating (0 Good, 1–2 Hard,
+      3+, a hint or giving up Again) that you confirm. Apple Pencil palm rejection is on: in Pencil-only mode
+      finger touches are ignored, switched on automatically the first time a Pencil touches the pad. Characters
+      come from the official HSK 3.0 handwriting list (Progress → Handwriting → Add the next 5) or a Write
+      button on any character in the lookup sheet. Stroke data is served by the API, not a CDN, and cached
+      for offline use
+
 - [x] Background worker: generation is queued as a job (a Postgres table with `SKIP LOCKED`, no Redis) and run by
       the `worker` container. The library shows progress and "Ready" when done, plus Retry for failures.
       Jobs survive restarts, and a job orphaned by a crashed worker is requeued after 15 minutes
@@ -51,8 +59,7 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 - [x] Mining requires a context sentence or text; placement bulk-marking by HSK level
 - [x] Progress: known words and characters, cumulative HSK coverage, characters read
 
-Next: the handwriting track (Hanzi Writer with Apple
-Pencil), the nightly FSRS optimizer, then SUBTLEX-CH and Tatoeba imports, g2pM for polyphones, and the sound bootcamp.
+Next: the nightly FSRS optimizer, then SUBTLEX-CH and Tatoeba imports, g2pM for polyphones, and the sound bootcamp.
 
 ## Run it
 
@@ -124,6 +131,7 @@ web/src/
 
 ## Data licenses
 
-CC-CEDICT is CC BY-SA 4.0 (kept in its own table, attributed in lookups). Make Me a Hanzi's
+CC-CEDICT is CC BY-SA 4.0 (kept in its own table, attributed in lookups). The HSK 3.0 handwriting lists come from
+krmanik/HSK-3.0, transcribed from the official syllabus. Make Me a Hanzi's
 `dictionary.txt` and `graphics.txt` are licensed separately (graphics: Arphic PL).
 complete-hsk-vocabulary, jieba, pypinyin and py-fsrs are MIT.

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { api, type DueCard } from "../api";
 import { PlayIcon } from "../components/LookupSheet";
 import { Pinyin } from "../components/Pinyin";
-import { cachedParams, cachedQueue, cachedWaiting, enqueue, flush, pending, saveParams, saveQueue, saveWaiting } from "../outbox";
+import { cachedParams, cachedQueue, cachedWaiting, enqueue, flush, pending, saveParams, saveQueue, saveWaiting, type Mode } from "../outbox";
+import { WritingPad, type PadHandle } from "../components/WritingPad";
 import { makeScheduler, review as localReview } from "../scheduler";
 import { canSpeak, speak } from "../speech";
 
@@ -31,7 +32,26 @@ const FACET_PROMPT: Record<string, string> = {
   meaning: "What does it mean?",
   reading: "How is it pronounced? Say it aloud, tones included.",
   listening: "Listen. What did you hear?",
+  handwriting: "Write it from memory, stroke by stroke.",
 };
+
+/** Hanzi Writer's mistake count -> suggested FSRS rating. Hints or giving up mean Again. */
+export function suggestRating(mistakes: number, helped: boolean): 1 | 2 | 3 {
+  if (helped || mistakes >= 3) return 1;
+  return mistakes >= 1 ? 2 : 3;
+}
+
+const MODE_KEY = "bhasha.reviewMode";
+const initialMode = (): Mode => {
+  try {
+    return localStorage.getItem(MODE_KEY) === "writing" ? "writing" : "words";
+  } catch {
+    return "words";
+  }
+};
+
+/** The word with this character blanked out, as a cue: 银行 -> ＿行. */
+const masked = (context: string | null, ch: string) => (context && context.includes(ch) && context !== ch ? context.split(ch).join("＿") : null);
 
 function Sentence({ text, word }: { text: string; word: string }) {
   const i = text.indexOf(word);
@@ -44,8 +64,19 @@ function Sentence({ text, word }: { text: string; word: string }) {
 }
 
 export function Review({ onCount }: { onCount: (n: number) => void }) {
+  const [mode, setModeState] = useState<Mode>(initialMode);
   const [queue, setQueue] = useState<DueCard[] | null>(null);
-  const [waiting, setWaiting] = useState<DueCard[]>(cachedWaiting);
+  const [waiting, setWaiting] = useState<DueCard[]>(() => cachedWaiting(mode));
+  const [suggested, setSuggested] = useState<1 | 2 | 3 | null>(null);
+  const [mistakes, setMistakes] = useState<number | null>(null);
+  const helped = useRef(false);
+  const pad = useRef<PadHandle>(null);
+  const setMode = (m: Mode) => {
+    try { localStorage.setItem(MODE_KEY, m); } catch { /* ignore */ }
+    setQueue(null);
+    setWaiting(cachedWaiting(m));
+    setModeState(m);
+  };
   const [sched, setSched] = useState<Awaited<ReturnType<typeof makeScheduler>> | null>(null);
   const [offline, setOffline] = useState(false);
   const [revealed, setRevealed] = useState(false);
@@ -60,26 +91,26 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
     const waitingIds = () => new Set(pending().map((p) => p.card_id));
     let q: DueCard[];
     try {
-      const fresh = await api.due();
+      const fresh = await api.due(100, mode);
       // Ratings still in the outbox haven't reached the server; don't show those cards twice.
       const skip = waitingIds();
       q = fresh.filter((c) => !skip.has(c.card_id));
       setOffline(false);
     } catch {
       const skip = waitingIds();
-      q = cachedQueue().filter((c) => !skip.has(c.card_id));
+      q = cachedQueue(mode).filter((c) => !skip.has(c.card_id));
       setOffline(true);
     }
     // Keep locally scheduled learning cards the server list doesn't already include.
     const inQueue = new Set(q.map((c) => c.card_id));
-    const w = cachedWaiting().filter((c) => !inQueue.has(c.card_id));
-    saveQueue(q);
-    saveWaiting(w);
+    const w = cachedWaiting(mode).filter((c) => !inQueue.has(c.card_id));
+    saveQueue(q, mode);
+    saveWaiting(w, mode);
     setQueue(q);
     setWaiting(w);
-  }, []);
+  }, [mode]);
   useEffect(() => void load(), [load]);
-  useEffect(() => onCount((queue?.length ?? 0) + waiting.filter((c) => dueMs(c) <= Date.now()).length), [queue, waiting, onCount]);
+  useEffect(() => { if (mode === "words") onCount((queue?.length ?? 0) + waiting.filter((c) => dueMs(c) <= Date.now()).length); }, [queue, waiting, onCount, mode]);
 
   // Move learning cards back into the queue when their step is up.
   const now = useClock(waiting.length > 0);
@@ -91,8 +122,8 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
     const q = [...ready, ...queue];
     setQueue(q);
     setWaiting(rest);
-    saveQueue(q);
-    saveWaiting(rest);
+    saveQueue(q, mode);
+    saveWaiting(rest, mode);
   }, [now, waiting, queue]);
 
   const pullNext = () => {
@@ -100,18 +131,27 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
     const [next, ...rest] = [...waiting].sort((a, b) => dueMs(a) - dueMs(b));
     setQueue([next, ...queue]);
     setWaiting(rest);
-    saveWaiting(rest);
+    saveWaiting(rest, mode);
   };
 
   const card = queue?.[0];
   useEffect(() => {
     setRevealed(false);
+    setSuggested(null);
+    setMistakes(null);
+    helped.current = false;
     shownAt.current = Date.now();
     if (card?.facet === "listening") speak(card.headword);
   }, [card?.card_id]);
 
   const reveal = () => {
     if (!card || revealed) return;
+    if (card.facet === "handwriting") {
+      // "Show answer" on a writing card means giving up: animate the strokes.
+      helped.current = true;
+      pad.current?.giveUp();
+      setSuggested(1);
+    }
     setRevealed(true);
     if (card.facet === "reading") speak(card.headword);
   };
@@ -119,16 +159,17 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
   const rate = (rating: 1 | 2 | 3 | 4) => {
     if (!card || !revealed) return;
     const at = new Date();
-    enqueue({ card_id: card.card_id, rating, reviewed_at: at.toISOString(), duration_ms: Date.now() - shownAt.current });
+    enqueue({ card_id: card.card_id, rating, reviewed_at: at.toISOString(), duration_ms: Date.now() - shownAt.current,
+      source: card.facet === "handwriting" ? "handwriting" : "queue" });
     const rest = queue!.slice(1);
-    saveQueue(rest);
+    saveQueue(rest, mode);
     setQueue(rest);
     if (sched) {
       const next = localReview(sched, card.fsrs, card.card_id, rating, at);
       if (new Date(next.due).getTime() - at.getTime() <= LOOKAHEAD_MS) {
         const w = [...waiting.filter((c) => c.card_id !== card.card_id), { ...card, fsrs: next, is_new: false }];
         setWaiting(w);
-        saveWaiting(w);
+        saveWaiting(w, mode);
       }
     }
     setDoneCount((n) => n + 1);
@@ -145,14 +186,21 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
     return () => removeEventListener("keydown", onKey);
   });
 
-  if (!queue) return <main class="page"><p class="muted">Loading reviews…</p></main>;
+  const modeSwitch = (
+    <div class="seg mode-switch" role="tablist" aria-label="Session">
+      <button role="tab" aria-selected={mode === "words"} class={mode === "words" ? "on" : ""} onClick={() => mode !== "words" && setMode("words")}>Words</button>
+      <button role="tab" aria-selected={mode === "writing"} class={mode === "writing" ? "on" : ""} onClick={() => mode !== "writing" && setMode("writing")}>Writing</button>
+    </div>
+  );
+
+  if (!queue) return <main class="page"><header class="page-head"><h1>Review</h1>{modeSwitch}</header><p class="muted">Loading…</p></main>;
 
   if (!card && waiting.length) {
     const next = Math.min(...waiting.map(dueMs));
     const secs = Math.max(0, Math.ceil((next - now) / 1000));
     return (
       <main class="page">
-        <header class="page-head"><h1>Review</h1></header>
+        <header class="page-head"><h1>Review</h1>{modeSwitch}</header>
         <section class="empty card">
           <p class="countdown" aria-live="off">{Math.floor(secs / 60)}:{String(secs % 60).padStart(2, "0")}</p>
           <h2>{waiting.length === 1 ? "1 card is" : `${waiting.length} cards are`} between learning steps</h2>
@@ -172,14 +220,16 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
   if (!card) {
     return (
       <main class="page">
-        <header class="page-head"><h1>Review</h1></header>
+        <header class="page-head"><h1>Review</h1>{modeSwitch}</header>
         <section class="empty card">
           <p class="empty-glyph" lang="zh-CN" aria-hidden="true">{doneCount ? "好" : "空"}</p>
           <h2>{doneCount ? `${doneCount} reviewed. Nothing else is due.` : "Nothing due"}</h2>
           <p class="muted">
             {doneCount
               ? "Everything due today is done. Reading next is a good use of the time."
-              : "Add words from the reader. They show up here once you've met them in a text."}
+              : mode === "writing"
+                ? "Start characters from the official HSK list in Progress, or tap Write on a character when you look a word up."
+                : "Add words from the reader. They show up here once you've met them in a text."}
           </p>
           <div class="row">
             <a class="btn primary" href="#/">Go read</a>
@@ -192,9 +242,12 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
   }
 
   const listening = card.facet === "listening";
+  const writing = card.facet === "handwriting";
+  const cue = writing ? masked(card.context_sentence, card.headword) : null;
   return (
     <main class="page review">
       <header class="rv-top">
+        {modeSwitch}
         <span class="muted">{queue.length} left{doneCount ? ` · ${doneCount} done` : ""}</span>
         <span class="rv-tags">
           <span class="chip chip-quiet">{card.facet}</span>
@@ -204,6 +257,32 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
         </span>
       </header>
 
+      {writing ? (
+      <section class="rv-card card writing" aria-live="polite">
+        <p class="rv-prompt muted">{FACET_PROMPT.handwriting}</p>
+        <div class="rv-cue">
+          <Pinyin numeric={card.reading} display={card.reading_display} />
+          <span class="rv-cue-meaning">{card.meanings.slice(0, 2).join("; ")}</span>
+          {cue && <span class="rv-cue-word" lang="zh-CN">{cue}</span>}
+        </div>
+        <WritingPad ref={pad} char={card.headword} onDone={(m) => {
+          setMistakes(m);
+          setSuggested(suggestRating(m, helped.current));
+          setRevealed(true);
+          speak(card.headword);
+        }} />
+        {revealed ? (
+          <p class="rv-result">
+            {helped.current ? "Watch the stroke order, then rate it." : mistakes === 0 ? "Clean: no mistakes." : `${mistakes} mistake${mistakes === 1 ? "" : "s"}.`}
+          </p>
+        ) : (
+          <div class="row tight center">
+            <button class="btn quiet" onClick={() => { helped.current = true; pad.current?.hint(); }}>Hint</button>
+            <button class="btn" onClick={reveal}>I don't remember</button>
+          </div>
+        )}
+      </section>
+      ) : (
       <section class={`rv-card card ${revealed ? "is-revealed" : ""}`} onClick={reveal}
         aria-live="polite">
         <p class="rv-prompt muted">{FACET_PROMPT[card.facet] ?? "Recall it"}</p>
@@ -240,10 +319,11 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
           <button class="btn wide reveal" onClick={(e) => { e.stopPropagation(); reveal(); }}>Show answer</button>
         )}
       </section>
+      )}
 
       <div class={`ratings ${revealed ? "" : "is-hidden"}`} aria-hidden={!revealed}>
         {RATINGS.map(({ r, label, hint }) => (
-          <button key={r} class={`rate rate-${r}`} disabled={!revealed} onClick={() => rate(r)}>
+          <button key={r} class={`rate rate-${r} ${suggested === r ? "suggested" : ""}`} disabled={!revealed} onClick={() => rate(r)}>
             <span>{label}</span>
             <small>{hint}</small>
           </button>

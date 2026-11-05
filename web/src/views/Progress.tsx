@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import { api, type Progress as P } from "../api";
+import { HandwritingProgress } from "../components/HandwritingProgress";
 import { ModelSettings } from "../components/ModelSettings";
 import { toast } from "../components/Toast";
 import { num, pct } from "../format";
@@ -54,6 +55,8 @@ export function Progress() {
         </ul>
         {p.hsk_cumulative.length === 0 && <p class="muted">No HSK data imported yet. Run ops/import-data.sh.</p>}
       </section>
+
+      <HandwritingProgress />
 
       <details class="card">
         <summary>Already know some Chinese?</summary>

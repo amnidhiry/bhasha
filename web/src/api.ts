@@ -140,6 +140,12 @@ export interface DueCard {
   fsrs: FsrsState;
 }
 
+export interface HandwritingOverview {
+  bands: { band: string; total: number; practising: number; written: number }[];
+  own_characters: number;
+  cards: number;
+}
+
 export interface Progress {
   known_words: number;
   known_characters: number;
@@ -211,7 +217,10 @@ export const api = {
   markLevel: (levelTag: string, status: "known" | "clear") =>
     post<{ marked: number }>("/units/mark", { level_tag: levelTag, status }),
   schedulerParams: () => req<SchedulerParams>("/reviews/params"),
-  due: (limit = 100) => req<DueCard[]>(`/reviews/due?limit=${limit}`),
+  due: (limit = 100, mode: "words" | "writing" = "words") => req<DueCard[]>(`/reviews/due?limit=${limit}&mode=${mode}`),
+  handwriting: () => req<HandwritingOverview>("/handwriting"),
+  handwritingAdd: (b: { characters?: string[]; from_list?: number; context?: string }) =>
+    post<{ created: { card_id: number; character: string }[] }>("/handwriting/add", b),
   sync: (reviews: unknown[]) =>
     post<{ applied: string[]; duplicates: string[]; replayed_cards: number[] }>("/reviews", reviews),
   progress: () => req<Progress>("/progress"),

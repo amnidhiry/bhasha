@@ -10,7 +10,7 @@ from app.api.deps import current_user
 from app.config import get_settings
 from app.db import get_db
 from app.learner import _aware, apply_review, is_leech, replay, retrievability, scheduler
-from app.models import AppUser, Card, CedictEntry, ReviewLog, Unit
+from app.models import AppUser, Card, CedictEntry, CharacterInfo, ReviewLog, Unit
 from app.packs.zh.pinyin import numeric_to_marks
 from fsrs import State
 
@@ -28,6 +28,10 @@ def meanings_for(db: Session, unit: Unit) -> list[str]:
     m = (unit.extra or {}).get("meanings")
     if m:
         return m
+    if unit.type == "character":
+        info = db.get(CharacterInfo, unit.headword)
+        if info is not None and info.definition:
+            return [info.definition]
     entries = list(db.scalars(select(CedictEntry).where(CedictEntry.simplified == unit.headword)))
     exact = [e for e in entries if e.pinyin.lower().replace("u:", "v") == unit.reading]
     return [g for e in (exact or entries) for g in e.glosses][:6]
@@ -85,17 +89,23 @@ def params(_: AppUser = Depends(current_user)):
 
 
 @router.get("/due", response_model=list[DueCard])
-def due(limit: int = 50, db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
+def due(limit: int = 50, mode: str = "words", db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
+    """Due cards for one session. mode=words: everything but handwriting;
+    mode=writing: handwriting only. Each mode has its own daily caps, so a
+    writing session never eats the reading-and-review budget."""
     s = get_settings()
     now = datetime.now(timezone.utc)
     today = day_start(now)
+    in_mode = (Card.facet == "handwriting") if mode == "writing" else (Card.facet != "handwriting")
+    max_reviews = s.max_handwriting_per_day if mode == "writing" else s.max_reviews_per_day
+    max_new = s.max_new_handwriting_per_day if mode == "writing" else s.max_new_cards_per_day
 
     done_today = db.scalar(
-        select(func.count()).select_from(ReviewLog).where(
-            ReviewLog.user_id == user.id, ReviewLog.scheduled, ReviewLog.reviewed_at >= today)
+        select(func.count()).select_from(ReviewLog).join(Card, Card.id == ReviewLog.card_id).where(
+            ReviewLog.user_id == user.id, ReviewLog.scheduled, ReviewLog.reviewed_at >= today, in_mode)
     ) or 0
     first_reviews = (
-        select(ReviewLog.card_id).where(ReviewLog.user_id == user.id)
+        select(ReviewLog.card_id).join(Card, Card.id == ReviewLog.card_id).where(ReviewLog.user_id == user.id, in_mode)
         .group_by(ReviewLog.card_id).having(func.min(ReviewLog.reviewed_at) >= today)
     )
     new_today = db.scalar(select(func.count()).select_from(first_reviews.subquery())) or 0
@@ -106,13 +116,14 @@ def due(limit: int = 50, db: Session = Depends(get_db), user: AppUser = Depends(
             .where(ReviewLog.user_id == user.id, ReviewLog.reviewed_at >= today)
         )
     }
-    budget = max(0, min(limit, s.max_reviews_per_day - done_today))
-    new_budget = max(0, s.max_new_cards_per_day - new_today)
+    budget = max(0, min(limit, max_reviews - done_today))
+    new_budget = max(0, max_new - new_today)
 
     out: list[DueCard] = []
     seen_units: set[int] = set()
     cards = db.scalars(
-        select(Card).where(Card.user_id == user.id, ~Card.suspended, Card.due <= now).order_by(Card.due)
+        select(Card).where(Card.user_id == user.id, ~Card.suspended, Card.due <= now, in_mode)
+        .order_by(Card.due)
     )
     for c in cards:
         if len(out) >= budget:

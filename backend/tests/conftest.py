@@ -48,6 +48,10 @@ def client(tmp_path, monkeypatch):
         import_cedict(s, FIXTURES / "cedict_sample.u8")
         import_hanzi(s, FIXTURES / "hanzi_sample.txt")
         import_hsk(s, FIXTURES / "hsk_sample.json")
+        from app.importers.hanzi_graphics import import_graphics
+        from app.importers.handwriting import import_handwriting
+        import_graphics(s, FIXTURES / "graphics_sample.txt")
+        import_handwriting(s, FIXTURES / "handwriting")
 
     from app.packs import get_pack
     get_pack.cache_clear()

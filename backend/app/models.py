@@ -261,3 +261,13 @@ class Job(Base):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (Index("ix_job_status_created", "status", "created_at"),)
+
+
+class CharacterStrokes(Base):
+    """Make Me a Hanzi graphics.txt (Arphic Public License): stroke outlines and
+    medians, served to Hanzi Writer as-is."""
+
+    __tablename__ = "character_strokes"
+    character: Mapped[str] = mapped_column(String(8), primary_key=True)
+    strokes: Mapped[list] = mapped_column(JSONType)
+    medians: Mapped[list] = mapped_column(JSONType)

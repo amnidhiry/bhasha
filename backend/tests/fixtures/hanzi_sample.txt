@@ -1,2 +1,3 @@
 {"character":"银","definition":"silver; cash, money, wealth","pinyin":["yín"],"decomposition":"⿰钅艮","etymology":{"type":"pictophonetic","phonetic":"艮","semantic":"钅","hint":"metal"},"radical":"钅","matches":[[0],[0],[0],[0],[0],[1],[1],[1],[1],[1],[1]]}
 {"character":"行","definition":"go; walk; move, travel; circulate","pinyin":["xíng","háng"],"decomposition":"⿰彳亍","etymology":{"type":"pictographic","hint":"A crossroads"},"radical":"行","matches":[[0],[0],[0],[1],[1],[1]]}
+{"character":"我","definition":"I, me, my; our, us","pinyin":["wǒ"],"decomposition":"⿰扌戈","etymology":{"type":"ideographic","hint":"A hand 扌 holding a weapon 戈"},"radical":"戈","matches":[[0],[1],[0],[0],[1],[1],[1]]}

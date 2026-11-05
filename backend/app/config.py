@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     desired_retention: float = 0.9
     max_reviews_per_day: int = 200
     max_new_cards_per_day: int = 15
+    # The daily handwriting track: 5-10 minutes.
+    max_handwriting_per_day: int = 40
+    max_new_handwriting_per_day: int = 5
     # Default target known-word coverage for generated and imported texts.
     target_coverage: float = 0.96
     # HSK list version used as the curriculum spine (see docs/design.md).

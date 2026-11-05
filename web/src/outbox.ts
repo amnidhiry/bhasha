@@ -16,7 +16,7 @@ export interface PendingReview {
   rating: 1 | 2 | 3 | 4;
   reviewed_at: string;
   duration_ms: number;
-  source: "queue";
+  source: "queue" | "handwriting";
 }
 
 function read<T>(key: string, fallback: T): T {
@@ -38,8 +38,8 @@ function write(key: string, value: unknown) {
 
 export const pending = () => read<PendingReview[]>(OUTBOX, []);
 
-export function enqueue(r: Omit<PendingReview, "id" | "source">) {
-  const item: PendingReview = { ...r, id: uuid(), source: "queue" };
+export function enqueue(r: Omit<PendingReview, "id" | "source"> & { source?: PendingReview["source"] }) {
+  const item: PendingReview = { source: "queue", ...r, id: uuid() };
   write(OUTBOX, [...pending(), item]);
   void flush();
 }
@@ -66,11 +66,14 @@ export function flush(): Promise<number> {
   return flushing;
 }
 
-export const cachedQueue = () => read<DueCard[]>(QUEUE, []);
-export const saveQueue = (cards: DueCard[]) => write(QUEUE, cards);
+// Words and writing are separate sessions, each with its own cached queue.
+export type Mode = "words" | "writing";
+const key = (base: string, mode: Mode) => (mode === "words" ? base : `${base}.${mode}`);
+export const cachedQueue = (mode: Mode = "words") => read<DueCard[]>(key(QUEUE, mode), []);
+export const saveQueue = (cards: DueCard[], mode: Mode = "words") => write(key(QUEUE, mode), cards);
 /** Cards answered this session that come back after a learning step (minutes away). */
-export const cachedWaiting = () => read<DueCard[]>(WAITING, []);
-export const saveWaiting = (cards: DueCard[]) => write(WAITING, cards);
+export const cachedWaiting = (mode: Mode = "words") => read<DueCard[]>(key(WAITING, mode), []);
+export const saveWaiting = (cards: DueCard[], mode: Mode = "words") => write(key(WAITING, mode), cards);
 export const cachedParams = () => read<SchedulerParams | null>(PARAMS, null);
 export const saveParams = (p: SchedulerParams) => write(PARAMS, p);
 

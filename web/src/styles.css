@@ -378,3 +378,35 @@ details.sub summary { font-weight: 550; color: var(--ink-2); font-size: 0.9rem; 
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
 .job-dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--ok); }
 .job-dot.failed { background: var(--accent); }
+
+/* Handwriting */
+.mode-switch button { min-height: 34px; }
+.rv-top { gap: 10px; flex-wrap: wrap; }
+.page-head .mode-switch { margin-left: auto; }
+.rv-card.writing { cursor: default; justify-content: flex-start; padding-top: 20px; }
+.rv-cue { display: grid; gap: 4px; justify-items: center; margin-bottom: 12px; }
+.rv-cue .pinyin { font-size: 1.5rem; }
+.rv-cue-meaning { color: var(--ink-2); }
+.rv-cue-word { font: 1.4rem var(--serif-zh); letter-spacing: 0.1em; color: var(--ink-2); }
+.pad-wrap { display: grid; justify-items: center; gap: 8px; width: 100%; }
+.pad {
+  width: min(420px, 100%); aspect-ratio: 1; border: 1px solid var(--rule); border-radius: 12px;
+  background: var(--paper); touch-action: none; user-select: none; -webkit-user-select: none; overflow: hidden;
+}
+/* 田字格: the practice grid of a Chinese exercise book */
+.tianzige {
+  background-image:
+    linear-gradient(to right, transparent calc(50% - 0.5px), var(--rule) calc(50% - 0.5px), var(--rule) calc(50% + 0.5px), transparent calc(50% + 0.5px)),
+    linear-gradient(to bottom, transparent calc(50% - 0.5px), var(--rule) calc(50% - 0.5px), var(--rule) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+}
+.pad svg { display: block; } /* keep its pixel size: Hanzi Writer maps pointers in unscaled SVG pixels */
+.pencil-toggle { display: flex; gap: 8px; align-items: center; font-size: 0.8rem; color: var(--ink-3); min-height: 32px; }
+.pencil-toggle input { accent-color: var(--accent); }
+.rv-result { margin: 12px 0 0; font-weight: 600; }
+.row.center { justify-content: center; margin-top: 12px; }
+.rate.suggested { outline: 3px solid var(--accent); outline-offset: 2px; }
+.lk-char { position: relative; }
+.lk-write { position: absolute; right: 6px; top: 6px; min-height: 32px; padding: 0 10px; font-size: 0.8rem; }
+.meter { position: relative; }
+.meter .meter-ghost { position: absolute; left: 0; top: 0; height: 100%; background: var(--accent); opacity: 0.25; }
+.legend { margin-top: 8px; }

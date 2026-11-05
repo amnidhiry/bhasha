@@ -17,4 +17,6 @@ docker compose exec -T api python -c "import urllib.request; urllib.request.urlo
 run app.importers.hsk /data/complete-hsk.json
 run app.importers.hanzi /data/makemeahanzi-dictionary.txt
 run app.importers.cedict /data/cedict.txt
+run app.importers.hanzi_graphics /data/makemeahanzi-graphics.txt
+run app.importers.handwriting /data/hsk-handwriting
 docker compose restart api   # reload the segmenter dictionary
