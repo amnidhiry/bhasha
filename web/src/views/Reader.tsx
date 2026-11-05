@@ -171,10 +171,14 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
           {g != null && genSentences[g] && (
             <span class="translation" lang="en">
               {genSentences[g].en}
-              <button class={`flag ${isFlagged(g) ? "on" : ""}`} disabled={isFlagged(g)} onClick={() => flag(g)}
-                aria-label="Flag this sentence as unnatural Chinese" title="Sounds unnatural">
-                {isFlagged(g) ? "flagged" : "⚑"}
-              </button>
+              {genSentences[g].url ? (
+                <a class="src" href={genSentences[g].url} target="_blank" rel="noopener">Tatoeba #{genSentences[g].id}</a>
+              ) : (
+                <button class={`flag ${isFlagged(g) ? "on" : ""}`} disabled={isFlagged(g)} onClick={() => flag(g)}
+                  aria-label="Flag this sentence as unnatural Chinese" title="Sounds unnatural">
+                  {isFlagged(g) ? "flagged" : "⚑"}
+                </button>
+              )}
             </span>
           )}
           </Fragment>
@@ -188,6 +192,12 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
           {meta.accepted_with_issues && meta.out_of_bounds?.length
             ? <> Includes words beyond your level: <span lang="zh-CN">{meta.out_of_bounds.join("、")}</span>.</>
             : null}
+        </p>
+      )}
+
+      {doc.provenance === "tatoeba" && (
+        <p class="gen-note muted small">
+          Real sentences written and translated by people. {meta.attribution ?? "Tatoeba, CC BY 2.0 FR"}; tap English to see each source.
         </p>
       )}
 

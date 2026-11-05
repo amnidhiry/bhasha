@@ -24,6 +24,18 @@ export function Library() {
   const loadTexts = () => api.texts().then(setTexts).catch((e) => setError(e.message));
   useEffect(() => void loadTexts(), []);
 
+  async function realSentences() {
+    setBusy(true);
+    try {
+      const doc = await api.sentencesText(8);
+      go(`#/read/${doc.id}`);
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function importText(t: string, b: string) {
     setBusy(true);
     try {
@@ -43,6 +55,10 @@ export function Library() {
         <span class="row tight">
           <button class="btn" onClick={() => { setAdding((a) => !a); setGenerating(false); }} aria-expanded={adding}>
             {adding ? "Cancel" : "Paste"}
+          </button>
+          <button class="btn" disabled={busy} onClick={realSentences}
+            title="Real sentences by people (Tatoeba), with at most one new word each">
+            Real sentences
           </button>
           <button class="btn primary" onClick={() => { setGenerating((g) => !g); setAdding(false); }} aria-expanded={generating}>
             Write me a text

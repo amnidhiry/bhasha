@@ -28,7 +28,7 @@ from app.llm import gateway
 from app.models import Card, Text, Unit
 from app.packs import get_pack
 from app.packs.base import WORD
-from app.reader import create_text
+from app.reader import create_text, sentence_map
 
 GENRES = {
     "story": "a short story with a clear beginning, middle and end",
@@ -272,16 +272,10 @@ def generate(db: Session, user_id: int, topic: str, genre: str = "story", length
 
     title = str(data.get("title") or brief.topic)[:200]
     text = create_text(db, user_id, "zh", title, "".join(s["zh"] for s in sentences), provenance="generated")
-    pack = get_pack("zh")
-    # Map each reader sentence (pack's splitter) to the generated sentence it came from.
-    sentence_map: list[int] = []
-    for i, s in enumerate(sentences):
-        toks = pack.analyze(s["zh"])
-        sentence_map += [i] * (max((t.sentence_index for t in toks), default=0) + 1)
     text.meta = {
         "title_en": str(data.get("title_en") or ""),
         "sentences": sentences,
-        "sentence_map": sentence_map,
+        "sentence_map": sentence_map([s["zh"] for s in sentences]),
         "questions": data.get("questions") or [],
         "targets": brief.targets,
         "target_words_used": data.get("target_words_used") or [],

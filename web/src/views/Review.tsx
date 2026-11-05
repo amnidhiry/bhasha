@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { api, type DueCard } from "../api";
+import { api, type DueCard, type Example } from "../api";
 import { PlayIcon } from "../components/LookupSheet";
 import { Pinyin } from "../components/Pinyin";
 import { cachedParams, cachedQueue, cachedWaiting, enqueue, flush, pending, saveParams, saveQueue, saveWaiting, type Mode } from "../outbox";
@@ -70,6 +70,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
   const [suggested, setSuggested] = useState<1 | 2 | 3 | null>(null);
   const [mistakes, setMistakes] = useState<number | null>(null);
   const helped = useRef(false);
+  const [example, setExample] = useState<Example | null>(null);
   const pad = useRef<PadHandle>(null);
   const setMode = (m: Mode) => {
     try { localStorage.setItem(MODE_KEY, m); } catch { /* ignore */ }
@@ -139,6 +140,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
     setRevealed(false);
     setSuggested(null);
     setMistakes(null);
+    setExample(null);
     helped.current = false;
     shownAt.current = Date.now();
     if (card?.facet === "listening") speak(card.headword);
@@ -154,6 +156,16 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
     }
     setRevealed(true);
     if (card.facet === "reading") speak(card.headword);
+    if (card.facet !== "handwriting") {
+      // A second, human-written example (not the one the word was mined from).
+      const id = card.card_id;
+      api.examples(card.unit_id, 3)
+        .then((ex) => {
+          const other = ex.find((e) => e.text !== card.context_sentence);
+          if (other && queue?.[0]?.card_id === id) setExample(other);
+        })
+        .catch(() => {});
+    }
   };
 
   const rate = (rating: 1 | 2 | 3 | 4) => {
@@ -314,6 +326,12 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
             </ul>
             {card.classifiers.length > 0 && <p class="muted" lang="zh-CN">MW {card.classifiers.join(" · ")}</p>}
             {listening && card.context_sentence && <Sentence text={card.context_sentence} word={card.headword} />}
+            {example && (
+              <div class="rv-example">
+                <Sentence text={example.text} word={card.headword} />
+                <p class="muted small">{example.translation} · <a href={example.url} target="_blank" rel="noopener" onClick={(e) => e.stopPropagation()}>Tatoeba</a></p>
+              </div>
+            )}
           </div>
         ) : (
           <button class="btn wide reveal" onClick={(e) => { e.stopPropagation(); reveal(); }}>Show answer</button>

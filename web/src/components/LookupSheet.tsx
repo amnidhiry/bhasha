@@ -94,6 +94,11 @@ export function LookupSheet({ target, onClose, onChanged }: {
           <span class="chip chip-quiet" lang="zh-CN">MW {primary.classifiers.join(" · ")}</span>
         )}
         {target.status && <span class={`chip status-${target.status}`}>{target.status}</span>}
+        {data?.frequency && (
+          <span class="chip chip-quiet" title={`${data.frequency.per_million.toFixed(1)} per million words of film subtitles (SUBTLEX-CH)`}>
+            #{data.frequency.rank.toLocaleString()} most common
+          </span>
+        )}
       </div>
 
       {error && <p class="error">{error}</p>}
@@ -146,6 +151,23 @@ export function LookupSheet({ target, onClose, onChanged }: {
             </div>
           ) : null}
         </>
+      )}
+
+      {data && data.examples.length > 0 && (
+        <div class="lk-examples">
+          <h3>Examples</h3>
+          {data.examples.map((e) => (
+            <div key={e.id} class="example">
+              <p class="ex-zh" lang="zh-CN">
+                {e.text}
+                {canSpeak() && (
+                  <button class="icon-btn tiny" aria-label="Play sentence" onClick={() => speak(e.text)}><PlayIcon /></button>
+                )}
+              </p>
+              <p class="ex-en">{e.translation} <a href={e.url} target="_blank" rel="noopener" class="src">Tatoeba</a></p>
+            </div>
+          ))}
+        </div>
       )}
 
       {target.sentence && canSpeak() && (

@@ -297,3 +297,33 @@ class AudioSyllable(Base):
     speaker: Mapped[str] = mapped_column(String(16))
     path: Mapped[str] = mapped_column(String(512))  # relative to BHASHA_AUDIO_DIR
     __table_args__ = (UniqueConstraint("key", "speaker"),)
+
+
+class WordFrequency(Base):
+    """SUBTLEX-CH-WF (Cai & Brysbaert, 2010): film-subtitle word frequencies."""
+
+    __tablename__ = "word_frequency"
+    word: Mapped[str] = mapped_column(String(64), primary_key=True)
+    rank: Mapped[int] = mapped_column(Integer, index=True)
+    per_million: Mapped[float] = mapped_column(Float)
+    cd_percent: Mapped[float] = mapped_column(Float)  # share of films the word appears in
+
+
+class ExampleSentence(Base):
+    """Human-written example sentences (Tatoeba, CC BY 2.0 FR). `id` is Tatoeba's
+    sentence id, so each sentence links back to its page for attribution."""
+
+    __tablename__ = "example_sentence"
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
+    source: Mapped[str] = mapped_column(String(16), default="tatoeba")
+    text: Mapped[str] = mapped_column(String(256))
+    translation: Mapped[str] = mapped_column(SAText)
+    n_words: Mapped[int] = mapped_column(Integer)
+    # The rarest word's SUBTLEX rank: a cheap difficulty measure (lower is easier).
+    difficulty: Mapped[int] = mapped_column(Integer, index=True)
+
+
+class SentenceUnit(Base):
+    __tablename__ = "sentence_unit"
+    sentence_id: Mapped[int] = mapped_column(ForeignKey("example_sentence.id", ondelete="CASCADE"), primary_key=True)
+    unit_id: Mapped[int] = mapped_column(ForeignKey("unit.id", ondelete="CASCADE"), primary_key=True, index=True)

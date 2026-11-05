@@ -463,3 +463,16 @@ details.sub summary { font-weight: 550; color: var(--ink-2); font-size: 0.9rem; 
 .tone-opt { width: 52px; min-height: 52px; }
 .drill-feedback { display: grid; gap: 10px; justify-items: center; }
 .drill-feedback p { margin: 0; font-size: 1.1rem; }
+
+/* Example sentences */
+.page-head { flex-wrap: wrap; }
+.lk-examples { margin: 14px 0 6px; }
+.lk-examples h3 { font-size: 0.85rem; color: var(--ink-2); margin: 0 0 6px; text-transform: none; }
+.example { padding: 8px 0; border-top: 1px solid var(--rule); }
+.ex-zh { font: 1.15rem/1.7 var(--serif-zh); margin: 0; display: flex; gap: 8px; align-items: center; }
+.ex-en { margin: 2px 0 0; font-size: 0.9rem; color: var(--ink-2); }
+.src { font-size: 0.75rem; color: var(--ink-3); margin-left: 6px; }
+.icon-btn.tiny { width: 30px; height: 30px; }
+.icon-btn.tiny svg { width: 14px; height: 14px; }
+.rv-example { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--rule); }
+.rv-example .rv-sentence { margin-top: 0; }

@@ -8,6 +8,13 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 
 ### Phase 1 PWA (in progress)
 
+- [x] SUBTLEX-CH word frequencies (99k words) rank every word the HSK list doesn't, shown as "#1,003 most
+      common" in the lookup sheet
+- [x] Tatoeba example sentences (human-written, CC BY 2.0 FR, Simplified only, each linked to its source):
+      three per word in the lookup sheet, ranked by how much of each you can read; a second example on review
+      answers; and "Real sentences", a reading text of 8 sentences with at most one unknown word each that
+      prefers your learning words and never repeats
+
 - [x] Sound bootcamp (Sounds tab): the four tones with pitch-contour diagrams and English-speaker cues, then
       initials and finals that aren't English (aspiration, j/q/x, zh/ch/sh/r, z/c/s, ü, -n/-ng). Drills:
       which tone, tone pairs on HSK words (answered as spoken, after sandhi), tone changes (3-3, 不, 一), and
@@ -66,7 +73,7 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 - [x] Mining requires a context sentence or text; placement bulk-marking by HSK level
 - [x] Progress: known words and characters, cumulative HSK coverage, characters read
 
-Next: the nightly FSRS optimizer, SUBTLEX-CH and Tatoeba imports, g2pM for polyphones, and server-side TTS.
+Next: the nightly FSRS optimizer, g2pM for polyphones, and server-side TTS.
 
 ## Run it
 
@@ -144,6 +151,7 @@ web/src/
 ## Data licenses
 
 CC-CEDICT is CC BY-SA 4.0 (kept in its own table, attributed in lookups). The HSK 3.0 handwriting lists come from
-krmanik/HSK-3.0, transcribed from the official syllabus. Make Me a Hanzi's
+krmanik/HSK-3.0, transcribed from the official syllabus. Tatoeba sentences are CC BY 2.0 FR and link to
+their source pages. SUBTLEX-CH (Cai & Brysbaert, 2010) is a research dataset; cite it if you publish anything. Make Me a Hanzi's
 `dictionary.txt` and `graphics.txt` are licensed separately (graphics: Arphic PL).
 complete-hsk-vocabulary, jieba, pypinyin and py-fsrs are MIT.

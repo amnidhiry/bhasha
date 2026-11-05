@@ -110,5 +110,16 @@ def serialize_text(db: Session, user_id: int, text: Text) -> dict:
     }
 
 
+def sentence_map(sentences: list[str], language: str = "zh") -> list[int]:
+    """For each reader sentence (the pack's splitter), the index of the source
+    sentence it came from, so translations line up under the right text."""
+    pack = get_pack(language)
+    out: list[int] = []
+    for i, zh in enumerate(sentences):
+        toks = pack.analyze(zh)
+        out += [i] * (max((t.sentence_index for t in toks), default=0) + 1)
+    return out
+
+
 def now() -> datetime:
     return datetime.now(timezone.utc)

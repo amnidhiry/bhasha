@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.api.deps import current_user
 from app.api.reviews import ReviewIn, record_reviews
 from app.db import get_db
-from app.models import AppUser, Card, CedictEntry, CharacterInfo, Exposure, Unit
+from app.examples import for_unit
+from app.learner import known_unit_ids
+from app.models import AppUser, Card, CedictEntry, CharacterInfo, Exposure, Unit, WordFrequency
 from app.packs import get_pack
 from app.packs.zh.pinyin import apply_sandhi, numeric_to_marks
 from app.reader import now
@@ -56,8 +58,12 @@ def lookup(q: str, language: str = "zh", text_id: int | None = None, log: bool =
             db.commit()
             logged = "exposure"
 
+    primary = next((u for u in units if (u.extra or {}).get("primary_form")), units[0]) if units else None
+    freq = db.get(WordFrequency, q)
     return {
         "query": q,
+        "frequency": {"rank": freq.rank, "per_million": freq.per_million} if freq else None,
+        "examples": for_unit(db, primary.id, known_unit_ids(db, user.id, language)) if primary else [],
         "reading": _zh_reading(pack, q),
         "units": [
             {"id": u.id, "reading": u.reading, "reading_display": " ".join(numeric_to_marks(s) for s in u.reading.split()),
@@ -78,6 +84,6 @@ def lookup(q: str, language: str = "zh", text_id: int | None = None, log: bool =
              "etymology": chars[ch].etymology} if ch in chars else {"character": ch}
             for ch in pack.sub_units(q)
         ],
-        "attribution": "CC-CEDICT (CC BY-SA 4.0); Make Me a Hanzi; complete-hsk-vocabulary (MIT)",
+        "attribution": "CC-CEDICT (CC BY-SA 4.0); Make Me a Hanzi; complete-hsk-vocabulary (MIT); SUBTLEX-CH; Tatoeba (CC BY 2.0 FR)",
         "logged": logged,
     }

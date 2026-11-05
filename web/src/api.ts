@@ -23,7 +23,8 @@ export interface Tok {
 
 export interface TextMeta {
   title_en?: string;
-  sentences?: { zh: string; en: string }[];
+  sentences?: { zh: string; en: string; id?: number; url?: string }[];
+  attribution?: string;
   sentence_map?: number[];
   questions?: { question_zh: string; question_en: string; answer_en: string }[];
   targets?: string[];
@@ -102,6 +103,17 @@ export interface Lookup {
   }[];
   attribution: string;
   logged: string | null;
+  frequency: { rank: number; per_million: number } | null;
+  examples: Example[];
+}
+
+export interface Example {
+  id: number;
+  text: string;
+  translation: string;
+  coverage: number | null;
+  source: string;
+  url: string;
 }
 
 export interface FsrsState {
@@ -246,6 +258,8 @@ export const api = {
     post<{ applied: string[]; duplicates: string[]; replayed_cards: number[] }>("/reviews", reviews),
   progress: () => req<Progress>("/progress"),
   bootcamp: () => req<Bootcamp>("/bootcamp"),
+  examples: (unitId: number, limit = 3) => req<Example[]>(`/units/${unitId}/examples?limit=${limit}`),
+  sentencesText: (n = 8) => post<TextDoc>("/texts/sentences", { n }),
   drill: (drill: string, n = 10) => req<DrillItem[]>(`/bootcamp/drill?drill=${encodeURIComponent(drill)}&n=${n}`),
   drillAttempt: (a: { drill: string; item: string; answer: string; correct: boolean }) => post<Bootcamp>("/bootcamp/attempts", [a]),
 };

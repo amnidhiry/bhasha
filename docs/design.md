@@ -404,7 +404,7 @@ The medical track starts only after the core reaches HSK 3 to 4, and a second la
 ### MVP scope (phases 0–1)
 
 - [x] Docker Compose skeleton, Postgres schema with migrations (repo on GitHub; Forgejo mirror is yours to set up)
-- [ ] Import CC-CEDICT, Make Me a Hanzi, HSK 3.0 lists (done), SUBTLEX-CH frequencies, Tatoeba sentences (to do)
+- [x] Import CC-CEDICT, Make Me a Hanzi, HSK 3.0 lists, SUBTLEX-CH frequencies, Tatoeba sentences
 - [x] zh language pack: segmentation with custom dictionary, pinyin with sandhi, lookup, decomposition
 - [x] FSRS-6 scheduler with meaning, reading and listening cards; review sync endpoint
 - [x] PWA: review screen, reader with word-status colors and tap lookup, one-tap mining
