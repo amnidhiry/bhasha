@@ -219,7 +219,7 @@ def test_overview_of_known_characters_grouped_by_component(chars):
     groups = {g["key"]: g for g in d["groups"]}
     assert set(groups["青"]["characters"]) == {"清", "精"}
     assert set(groups["水"]["characters"]) == {"清", "汉"} and groups["水"]["members"][0] == "氵"
-    assert set(groups["月"]["characters"]) == {"清", "精"}  # through 青, one level down
+    assert "月" not in groups  # only inside 青: groups count direct parts
     # Overview tiles carry the opaque flag for the grid.
     assert next(c for c in d["characters"] if c["character"] == "银")["transparency"] == "opaque"
 

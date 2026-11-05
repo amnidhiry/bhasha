@@ -483,3 +483,59 @@ details.sub summary { font-weight: 550; color: var(--ink-2); font-size: 0.9rem; 
 .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); flex: none; }
 .dot.on { background: var(--ok); }
 .link-btn.inline { display: inline; padding: 0 4px; font-weight: 500; }
+
+/* Characters: character page, component explorer, overview */
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.lk-char-link { position: absolute; inset: 0; border-radius: 12px; z-index: 0; }
+.lk-char-link::after { content: "›"; position: absolute; right: 12px; bottom: 8px; color: var(--ink-3); font-size: 1.2rem; }
+.lk-write { z-index: 1; }
+.ch-link-card { display: flex; gap: 14px; align-items: center; text-decoration: none; }
+.ch-link-card h2 { margin: 0 0 2px; }
+.ch-link-glyph { font: 400 2.2rem/1 var(--serif-zh); color: var(--accent); flex: none; }
+.ch-link-go { margin-left: auto; font-size: 1.6rem; color: var(--ink-3); }
+.ch-hero { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; margin: 0 0 16px; }
+.ch-strokes {
+  width: 182px; height: 182px; flex: none; padding: 0; cursor: pointer;
+  border: 1px solid var(--rule); border-radius: 12px; background-color: var(--paper-2);
+}
+.ch-strokes svg { display: block; }
+.ch-hero-glyph { font: 400 7rem/1 var(--serif-zh); width: 182px; text-align: center; }
+.ch-hero-body { flex: 1 1 200px; min-width: 0; }
+.ch-hero-reading { display: flex; gap: 8px; align-items: center; font-size: 1.5rem; }
+.ch-def { margin: 4px 0 0; font-size: 1.05rem; }
+.ch-ids { font: 400 0.95rem var(--serif-zh); margin-left: 6px; }
+.ch-parts, .ch-groups, .ch-notes, .ch-words { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+.ch-part, .ch-group-head {
+  display: flex; gap: 12px; align-items: center; text-decoration: none;
+  padding: 8px 10px; border: 1px solid var(--rule); border-radius: 12px; min-height: 44px;
+}
+.ch-part-glyph { font: 400 1.9rem/1 var(--serif-zh); width: 1.3em; text-align: center; flex: none; }
+.ch-part-body { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.ch-inline { font-family: var(--serif-zh); font-size: 1rem; }
+.ch-note { padding: 8px 12px; border-radius: 10px; background: var(--paper); border: 1px solid var(--rule); }
+.ch-note.warn { background: var(--learning); color: var(--learning-ink); border-color: transparent; }
+.ch-words li { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--rule); }
+.ch-words li:first-child { border-top: 0; }
+.ch-word { font: 1.2rem var(--serif-zh); }
+.ch-word-en { font-size: 0.9rem; flex: 1 1 12em; min-width: 0; }
+.ch-comp-title { font: 400 2.2rem/1.1 var(--serif-zh); letter-spacing: 0.15em; }
+.ch-filters { margin: 0 0 8px; gap: 4px 16px; }
+.ch-filters .toggle input { accent-color: var(--accent); }
+.ch-search { margin: 0 0 14px; }
+.ch-search input { font-size: 1rem; }
+.ch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(58px, 1fr)); gap: 6px; margin-top: 8px; }
+.ch-tile {
+  position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 2px 6px;
+  border: 1px solid var(--rule); border-radius: 10px; text-decoration: none; background: var(--paper-2);
+}
+.ch-tile.ch-learning { background: var(--learning); border-color: transparent; color: var(--learning-ink); }
+.ch-tile.ch-new { color: var(--ink-2); border-style: dashed; }
+.ch-glyph { font: 400 1.7rem/1.1 var(--serif-zh); }
+.ch-py { font-size: 0.72rem; color: var(--ink-2); }
+.ch-learning .ch-py { color: inherit; }
+.ch-via { font-size: 0.65rem; color: var(--ink-3); }
+.ch-dot { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
+.ch-groups li { display: grid; gap: 6px; }
+.ch-group-chars { display: flex; flex-wrap: wrap; gap: 2px 4px; font: 1.35rem/1.4 var(--serif-zh); padding: 0 6px; }
+.ch-group-chars a { text-decoration: none; padding: 0 3px; border-radius: 6px; }
+.ch-group-chars a:hover, .ch-group-chars a:focus-visible { background: var(--accent-soft); }

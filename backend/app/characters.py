@@ -459,9 +459,11 @@ def family_info(idx: Index, key: str) -> dict:
             "pinyin": readings_of(idx, key)}
 
 
-def productive_groups(idx: Index, mine: list[str], limit: int = 12, max_depth: int = 2) -> list[dict]:
-    """Components that appear in the most of the learner's characters (as a direct
-    part, or one level down, so 清 counts for 青 and 月), at least two each."""
+def productive_groups(idx: Index, mine: list[str], limit: int = 12, max_depth: int = 1) -> list[dict]:
+    """Components that are a direct part of the most of the learner's characters,
+    at least two each. Direct parts only: one level down mostly finds shapes inside
+    shapes (口 inside 日 in 时, 人 inside 大 in 天), which are noise as groups. The
+    explorer still follows parts of parts."""
     counts: dict[str, list[str]] = defaultdict(list)
     for ch in mine:
         e = idx.chars.get(ch)

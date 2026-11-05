@@ -39,6 +39,15 @@ export function Progress() {
         <div class="stat card"><span class="stat-n">{num(p.texts_finished)}</span><span class="muted">texts finished</span></div>
       </section>
 
+      <a class="card ch-link-card" href="#/chars">
+        <span class="ch-link-glyph" lang="zh-CN" aria-hidden="true">字</span>
+        <span>
+          <h2>Characters</h2>
+          <span class="muted small">Your {num(p.known_characters)} characters by component, stroke order, and which parts help.</span>
+        </span>
+        <span class="ch-link-go" aria-hidden="true">›</span>
+      </a>
+
       <section class="card">
         <h2>HSK 3.0 coverage</h2>
         <p class="muted small">Cumulative words known at each level, November 2025 syllabus.</p>

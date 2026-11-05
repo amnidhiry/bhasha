@@ -10,6 +10,7 @@ import { Progress } from "./views/Progress";
 import { Reader } from "./views/Reader";
 import { Review } from "./views/Review";
 import { Drill, Sounds } from "./views/Sounds";
+import { CharacterView, Characters } from "./views/Characters";
 import "./styles.css";
 
 function App() {
@@ -28,6 +29,8 @@ function App() {
       {route.name === "progress" && <Progress />}
       {route.name === "sounds" && <Sounds />}
       {route.name === "drill" && <Drill key={route.drill} drill={route.drill} />}
+      {route.name === "char" && <CharacterView key={route.char} char={route.char} />}
+      {route.name === "chars" && <Characters component={route.component} />}
       <TabBar route={route} due={due} />
       <ToastHost />
     </>
