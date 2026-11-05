@@ -1,3 +1,4 @@
+import { tl } from "../lang";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { api, type Job } from "../api";
 import { toast } from "./Toast";
@@ -48,7 +49,7 @@ export function JobList({ refreshKey, onDone }: { refreshKey: number; onDone: ()
             <>
               <span class="spinner" aria-hidden="true" />
               <span class="job-body">
-                <b>Writing{j.params.topic ? <> about <span lang="zh-CN">{j.params.topic}</span></> : null}…</b>
+                <b>Writing{j.params.topic ? <> about <span lang={tl()}>{j.params.topic}</span></> : null}…</b>
                 <span class="muted small">{j.status === "queued" ? "Waiting for the worker" : "Writing, then checking each word"}</span>
               </span>
             </>
@@ -56,7 +57,7 @@ export function JobList({ refreshKey, onDone }: { refreshKey: number; onDone: ()
             <>
               <span class="job-dot" aria-hidden="true" />
               <a class="job-body" href={`#/read/${j.result.text_id}`} onClick={() => void api.jobSeen(j.id)}>
-                <b lang="zh-CN">{j.result.title}</b>
+                <b lang={tl()}>{j.result.title}</b>
                 <span class="muted small">New text ready. Open it</span>
               </a>
               <button class="btn quiet" onClick={() => dismiss(j)} aria-label="Dismiss">✕</button>

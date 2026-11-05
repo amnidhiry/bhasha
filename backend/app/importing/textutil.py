@@ -1,23 +1,49 @@
-"""Small text helpers shared by the importers: Han counting, decoding, a
-stdlib HTML-to-text pass and splitting long text into parts."""
+"""Small text helpers shared by the importers: counting text in the language
+being imported, decoding, a stdlib HTML-to-text pass and splitting long text
+into parts.
+
+Which language is being imported is a context variable (`importing_language`),
+set once per request, so the helpers ask that language's pack instead of every
+function taking a language argument."""
 
 import re
+from contextlib import contextmanager
+from contextvars import ContextVar
 from html.parser import HTMLParser
 
-_HAN = re.compile(r"[㐀-䶿一-鿿豈-﫿\U00020000-\U0003134f]")
-_LATIN_WORD = re.compile(r"[A-Za-zÀ-ɏ]+")
+from app.packs import get_pack
+
+_LANGUAGE: ContextVar[str] = ContextVar("importing_language", default="zh")
 
 
-def han_count(s: str) -> int:
-    return len(_HAN.findall(s))
+@contextmanager
+def importing_language(code: str):
+    token = _LANGUAGE.set(code)
+    try:
+        yield
+    finally:
+        _LANGUAGE.reset(token)
 
 
-def han_ratio(line: str) -> float:
-    """Han characters against Han characters plus Latin words: 我用iPhone is
-    Chinese (2 of 3), "Hello world" is not. Lines with neither score 0."""
-    han = han_count(line)
-    latin = len(_LATIN_WORD.findall(line))
-    return han / (han + latin) if han + latin else 0.0
+def current() -> str:
+    return _LANGUAGE.get()
+
+
+def script_count(s: str) -> int:
+    """How big a text is as learners count it (zh: Han characters; bn: words)."""
+    return get_pack(_LANGUAGE.get()).script_count(s)
+
+
+def script_ratio(line: str) -> float:
+    """Share of a line in the language's script (zh: 我用iPhone is 2 of 3;
+    "Hello world" is 0). Lines with no letters score 0."""
+    return get_pack(_LANGUAGE.get()).script_ratio(line)
+
+
+def language_adjective() -> str:
+    """"Chinese", "Bengali": for messages to the learner."""
+    pack = get_pack(_LANGUAGE.get())
+    return pack.adjective or pack.name
 
 
 def decode(data: bytes) -> str:
@@ -103,19 +129,19 @@ def html_to_text(html: str) -> tuple[str, list[str]]:
 
 
 def split_parts(lines: list[str], target: int = 1500, min_last: int = 300) -> list[str]:
-    """Group lines into parts of at most about `target` Han characters (a part
+    """Group lines into parts of at most about `target` characters/words (a part
     goes over only when one line is that long), breaking only between lines.
     A short tail is folded into the previous part."""
     parts: list[list[str]] = [[]]
     count = 0
     for ln in lines:
-        n = han_count(ln)
+        n = script_count(ln)
         if parts[-1] and count + n > target and count >= target // 2:
             parts.append([])
             count = 0
         parts[-1].append(ln)
         count += n
-    if len(parts) > 1 and sum(han_count(ln) for ln in parts[-1]) < min_last:
+    if len(parts) > 1 and sum(script_count(ln) for ln in parts[-1]) < min_last:
         tail = parts.pop()
         parts[-1].extend(tail)
     return ["\n".join(p) for p in parts if p]

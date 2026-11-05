@@ -68,7 +68,7 @@ def _generate(db: Session, job: Job) -> dict:
 
     p = job.params
     text = generate(db, job.user_id, p.get("topic", ""), p.get("genre", "story"), p.get("length", "medium"),
-                    p.get("targets") or [])
+                    p.get("targets") or [], p.get("language") or "zh")
     if p.get("pre_teach_for"):
         from app.models import Text
 

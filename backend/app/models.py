@@ -36,6 +36,8 @@ class AppUser(Base):
     __tablename__ = "app_user"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(80), unique=True)
+    # The language the PWA is studying now; API calls default to it.
+    active_language: Mapped[str] = mapped_column(String(16), default="zh")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -303,9 +305,10 @@ class AudioSyllable(Base):
 
 
 class WordFrequency(Base):
-    """SUBTLEX-CH-WF (Cai & Brysbaert, 2010): film-subtitle word frequencies."""
+    """Word frequencies per language (zh: SUBTLEX-CH-WF, Cai & Brysbaert, 2010)."""
 
     __tablename__ = "word_frequency"
+    language: Mapped[str] = mapped_column(String(16), primary_key=True, default="zh")
     word: Mapped[str] = mapped_column(String(64), primary_key=True)
     rank: Mapped[int] = mapped_column(Integer, index=True)
     per_million: Mapped[float] = mapped_column(Float)
@@ -318,6 +321,7 @@ class ExampleSentence(Base):
 
     __tablename__ = "example_sentence"
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=False)
+    language: Mapped[str] = mapped_column(String(16), default="zh", index=True)
     source: Mapped[str] = mapped_column(String(16), default="tatoeba")
     text: Mapped[str] = mapped_column(String(256))
     translation: Mapped[str] = mapped_column(SAText)
@@ -394,6 +398,7 @@ class JournalEntry(Base):
     __tablename__ = "journal_entry"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"), index=True)
+    language: Mapped[str] = mapped_column(String(16), default="zh")
     text: Mapped[str] = mapped_column(SAText)
     # journal | tutor: a tutor conversation keeps its corrections on an entry of its own
     source: Mapped[str] = mapped_column(String(16), default="journal")
@@ -429,6 +434,7 @@ class TutorSession(Base):
     __tablename__ = "tutor_session"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"), index=True)
+    language: Mapped[str] = mapped_column(String(16), default="zh")
     scenario: Mapped[str] = mapped_column(String(48))
     status: Mapped[str] = mapped_column(String(16), default="active")  # active | ended
     goal_met: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -448,3 +454,20 @@ class TutorTurn(Base):
     hint: Mapped[str | None] = mapped_column(SAText)        # tutor turns: what you could say next
     off_level: Mapped[list] = mapped_column(JSONType, default=list)  # tutor words outside your level
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class DictionaryEntry(Base):
+    """Glosses for languages other than Mandarin (whose CC-CEDICT keeps its own table).
+    One `source` per license, so share-alike data stays separable."""
+
+    __tablename__ = "dictionary_entry"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    language: Mapped[str] = mapped_column(String(16))
+    source: Mapped[str] = mapped_column(String(32))  # e.g. wiktionary-bn
+    headword: Mapped[str] = mapped_column(String(128))
+    reading: Mapped[str] = mapped_column(String(256), default="")
+    pos: Mapped[str | None] = mapped_column(String(32))
+    glosses: Mapped[list] = mapped_column(JSONType, default=list)
+    tags: Mapped[list] = mapped_column(JSONType, default=list)  # e.g. region:wb, machine-gloss
+    license: Mapped[str] = mapped_column(String(32), default="")
+    __table_args__ = (Index("ix_dictionary_lang_head", "language", "headword"),)

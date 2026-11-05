@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
 
-from app.importing.textutil import han_count
+from app.importing.textutil import current, script_count
 from app.learner import ignored_unit_ids, known_unit_ids
 from app.packs import get_pack
 from app.packs.base import WORD
@@ -47,7 +47,8 @@ def _score(db: Session, user_id: int, language: str, body: str, known: set[int],
     return {"eligible": len(eligible), "known": known_n, "new_words": new_words}
 
 
-def preview(db: Session, user_id: int, draft: Draft, language: str = "zh") -> dict:
+def preview(db: Session, user_id: int, draft: Draft, language: str | None = None) -> dict:
+    language = language or current()
     known = known_unit_ids(db, user_id, language)
     ignored = ignored_unit_ids(db, user_id)
     parts, eligible, known_n, new_words = [], 0, 0, set()
@@ -59,7 +60,7 @@ def preview(db: Session, user_id: int, draft: Draft, language: str = "zh") -> di
         parts.append({
             "title": p.title,
             "body": p.body,
-            "characters": han_count(p.body),
+            "characters": script_count(p.body),
             "coverage": s["known"] / s["eligible"] if s["eligible"] else None,
             "new_words": len(s["new_words"]),
         })

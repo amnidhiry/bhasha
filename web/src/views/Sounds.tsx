@@ -1,3 +1,4 @@
+import { tl } from "../lang";
 import { useEffect, useState } from "preact/hooks";
 import { api, type Bootcamp, type DrillItem } from "../api";
 import { play } from "../audio";
@@ -42,7 +43,7 @@ export function Sounds() {
 
       <section class="card">
         <h2>1 · The four tones</h2>
-        <div class="tone-examples" lang="zh-CN">
+        <div class="tone-examples" lang={tl()}>
           {b.tone_examples.map((e) => (
             <button key={e.key} class="chip-btn" onClick={() => playKey(e.key, e.char)}>{e.label} {e.char}</button>
           ))}
@@ -78,7 +79,7 @@ export function Sounds() {
               {g.initials.map((i) => <span key={i} class="initial">{i}</span>)}
               <span class="spacer" />
               {g.audio.map((a) => (
-                <button key={a.key} class="chip-btn" lang="zh-CN" onClick={() => playKey(a.key, a.char)}>{a.label}</button>
+                <button key={a.key} class="chip-btn" lang={tl()} onClick={() => playKey(a.key, a.char)}>{a.label}</button>
               ))}
             </div>
             <p class="small">{g.tip}</p>
@@ -150,7 +151,7 @@ export function Drill({ drill }: { drill: string }) {
     return (
       <main class="page">
         <section class="empty card">
-          <p class="empty-glyph" lang="zh-CN" aria-hidden="true">{score >= items.length * 0.85 ? "好" : "练"}</p>
+          <p class="empty-glyph" lang={tl()} aria-hidden="true">{score >= items.length * 0.85 ? "好" : "练"}</p>
           <h2>{score} / {items.length}</h2>
           <p class="muted">{score >= items.length * 0.85 ? "Solid. Keep the streak going on another day; mastery counts your last 20." : "Again later today, or tomorrow. Short, frequent rounds work best."}</p>
           <div class="row">
@@ -181,7 +182,7 @@ export function Drill({ drill }: { drill: string }) {
       <section class="card drill-card">
         <p class="rv-prompt muted">{title}</p>
         {drill !== "sandhi" && !drill.startsWith("contrast:") && <p class="drill-prompt">{item.prompt}</p>}
-        {drill === "sandhi" && <p class="drill-prompt" lang="zh-CN">{item.prompt}</p>}
+        {drill === "sandhi" && <p class="drill-prompt" lang={tl()}>{item.prompt}</p>}
         <button class="rv-listen" onClick={() => play(item.audio)} aria-label="Play again"><PlayIcon /></button>
 
         {!twoTone ? (
@@ -218,7 +219,7 @@ export function Drill({ drill }: { drill: string }) {
         {picked && (
           <div class="drill-feedback">
             <p class={picked === item.answer ? "ok" : "error"}>
-              {picked === item.answer ? "Right." : "Not quite."} <span lang="zh-CN">{item.reveal}</span>
+              {picked === item.answer ? "Right." : "Not quite."} <span lang={tl()}>{item.reveal}</span>
             </p>
             <button class="btn primary" onClick={() => setI(i + 1)} autoFocus>Next</button>
           </div>

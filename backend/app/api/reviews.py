@@ -6,12 +6,12 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import current_user
+from app.api.deps import current_language, current_user
 from app.config import get_settings
 from app.db import get_db
 from app.learner import _aware, apply_review, is_leech, replay, retrievability, user_scheduler
-from app.models import AppUser, Card, CedictEntry, CharacterInfo, ReviewLog, Unit, UserFsrs
-from app.packs.zh.pinyin import numeric_to_marks
+from app.models import AppUser, Card, ReviewLog, Unit, UserFsrs
+from app.packs import get_pack
 from fsrs import State
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -24,17 +24,8 @@ def day_start(now: datetime) -> datetime:
 
 
 def meanings_for(db: Session, unit: Unit) -> list[str]:
-    """HSK meanings when present, else CC-CEDICT glosses for the matching reading."""
-    m = (unit.extra or {}).get("meanings")
-    if m:
-        return m
-    if unit.type == "character":
-        info = db.get(CharacterInfo, unit.headword)
-        if info is not None and info.definition:
-            return [info.definition]
-    entries = list(db.scalars(select(CedictEntry).where(CedictEntry.simplified == unit.headword)))
-    exact = [e for e in entries if e.pinyin.lower().replace("u:", "v") == unit.reading]
-    return [g for e in (exact or entries) for g in e.glosses][:6]
+    """Glosses for a card's unit, from its language pack (zh: HSK, then CC-CEDICT)."""
+    return get_pack(unit.language).meanings(db, unit)
 
 
 class FsrsState(BaseModel):
@@ -50,6 +41,7 @@ class FsrsState(BaseModel):
 
 class DueCard(BaseModel):
     card_id: int
+    language: str = "zh"
     unit_id: int
     facet: str
     headword: str
@@ -116,10 +108,12 @@ def review_status(mode: str = "words", db: Session = Depends(get_db), user: AppU
 
 
 @router.get("/due", response_model=list[DueCard])
-def due(limit: int = 50, mode: str = "words", db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
+def due(limit: int = 50, mode: str = "words", db: Session = Depends(get_db), user: AppUser = Depends(current_user),
+        lang: str = Depends(current_language)):
     """Due cards for one session. mode=words: everything but handwriting;
     mode=writing: handwriting only. Each mode has its own daily caps, so a
-    writing session never eats the reading-and-review budget."""
+    writing session never eats the reading-and-review budget. Only the active
+    language's cards are served; the daily caps are shared across languages."""
     s = get_settings()
     now = datetime.now(timezone.utc)
     today = day_start(now)
@@ -152,7 +146,8 @@ def due(limit: int = 50, mode: str = "words", db: Session = Depends(get_db), use
     seen_units: set[int] = set()
     sched = user_scheduler(db, user.id)
     cards = db.scalars(
-        select(Card).where(Card.user_id == user.id, ~Card.suspended, Card.due <= now, in_mode)
+        select(Card).join(Unit, Card.unit_id == Unit.id)
+        .where(Card.user_id == user.id, ~Card.suspended, Card.due <= now, in_mode, Unit.language == lang)
         .order_by(Card.due)
     )
     for c in cards:
@@ -168,8 +163,8 @@ def due(limit: int = 50, mode: str = "words", db: Session = Depends(get_db), use
             new_budget -= 1
         seen_units.add(c.unit_id)
         out.append(DueCard(
-            card_id=c.id, unit_id=c.unit_id, facet=c.facet, headword=c.unit.headword, reading=c.unit.reading,
-            reading_display=" ".join(numeric_to_marks(x) for x in c.unit.reading.split()),
+            card_id=c.id, language=c.unit.language, unit_id=c.unit_id, facet=c.facet, headword=c.unit.headword,
+            reading=c.unit.reading, reading_display=get_pack(c.unit.language).reading_display(c.unit.reading),
             meanings=meanings_for(db, c.unit), classifiers=(c.unit.extra or {}).get("classifiers", []),
             context_sentence=c.context_sentence, due=_aware(c.due), is_new=is_new, leech=is_leech(c),
             retrievability=retrievability(c, now, sched),

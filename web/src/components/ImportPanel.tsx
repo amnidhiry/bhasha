@@ -1,3 +1,4 @@
+import { lang, tl } from "../lang";
 import { useEffect, useState } from "preact/hooks";
 import {
   api, importApi,
@@ -109,8 +110,8 @@ function PasteForm({ onCancel }: { onCancel: () => void }) {
         <input value={title} onInput={(e) => setTitle(e.currentTarget.value)} placeholder="Optional" />
       </label>
       <label>
-        <span>Chinese text</span>
-        <textarea lang="zh-CN" rows={7} value={body} onInput={(e) => setBody(e.currentTarget.value)}
+        <span>{lang().adjective} text</span>
+        <textarea lang={tl()} rows={7} value={body} onInput={(e) => setBody(e.currentTarget.value)}
           placeholder="Paste an article, dialogue or subtitles…" required />
       </label>
       <Foot note="You'll see how much of it you already know before you start." busy={busy} label="Add"
@@ -176,14 +177,14 @@ function BookForm({ busy, setBusy, onPreview, onCancel }: {
       {book && (
         <>
           <p class="book-head">
-            <span class="text-title" lang="zh-CN">{book.title}</span>
-            {book.author && <span class="muted small" lang="zh-CN"> · {book.author}</span>}
+            <span class="text-title" lang={tl()}>{book.title}</span>
+            {book.author && <span class="muted small" lang={tl()}> · {book.author}</span>}
             <span class="muted small"> · {book.chapters.length} chapters</span>
           </p>
           <div class="form-row two">
             <label>
               <span>From</span>
-              <select lang="zh-CN" value={start} onChange={(e) => {
+              <select lang={tl()} value={start} onChange={(e) => {
                 const s = Number(e.currentTarget.value);
                 setStart(s);
                 if (end < s) setEnd(s);
@@ -193,17 +194,17 @@ function BookForm({ busy, setBusy, onPreview, onCancel }: {
             </label>
             <label>
               <span>To</span>
-              <select lang="zh-CN" value={end} onChange={(e) => setEnd(Number(e.currentTarget.value))}>
+              <select lang={tl()} value={end} onChange={(e) => setEnd(Number(e.currentTarget.value))}>
                 {book.chapters.filter((c) => c.index >= start).map((c) => <option key={c.index} value={c.index}>{c.title}</option>)}
               </select>
             </label>
           </div>
           {start === end && book.chapters[start] && (
-            <p class="excerpt" lang="zh-CN">{book.chapters[start].excerpt}…</p>
+            <p class="excerpt" lang={tl()}>{book.chapters[start].excerpt}…</p>
           )}
         </>
       )}
-      <Foot note={book ? `${num(chars)} characters selected.` : "Pick a chapter, or a run of chapters, to read as one text."}
+      <Foot note={book ? `${num(chars)} ${lang().script_unit} selected.` : "Pick a chapter, or a run of chapters, to read as one text."}
         busy={busy} label="Preview" disabled={!book} onCancel={onCancel} />
     </form>
   );
@@ -219,9 +220,9 @@ function SubtitleForm({ busy, onPreview, onCancel }: {
       <FilePick accept=".srt,.vtt,text/vtt,application/x-subrip" file={file} onFile={setFile} hint="An .srt or .vtt file" />
       <label>
         <span>Title</span>
-        <input lang="zh-CN" value={title} onInput={(e) => setTitle(e.currentTarget.value)} placeholder="Optional; the file name otherwise" />
+        <input lang={tl()} value={title} onInput={(e) => setTitle(e.currentTarget.value)} placeholder="Optional; the file name otherwise" />
       </label>
-      <Foot note="Timestamps go; bilingual files keep the Chinese lines. Long files become parts."
+      <Foot note={`Timestamps go; bilingual files keep the ${lang().adjective} lines. Long files become parts.`}
         busy={busy} label="Preview" disabled={!file} onCancel={onCancel} />
     </form>
   );
@@ -265,7 +266,7 @@ function JellyfinForm({ busy, setBusy, onPreview, onCancel }: {
     return (
       <div class="form">
         <button type="button" class="link-btn" onClick={() => setItem(null)}>‹ Back</button>
-        <p class="text-title" lang="zh-CN">{item.name}</p>
+        <p class="text-title" lang={tl()}>{item.name}</p>
         {item.subtitles.length === 0 && <p class="muted">This has no subtitle tracks.</p>}
         <ul class="pick-list">
           {item.subtitles.map((s) => (
@@ -274,7 +275,7 @@ function JellyfinForm({ busy, setBusy, onPreview, onCancel }: {
                 onClick={() => onPreview(importApi.jellyfin(item.id, s.index, s.media_source_id))}>
                 <span>{s.title}</span>
                 <span class="text-meta">
-                  {s.chinese && <span class="chip">Chinese</span>}
+                  {s.target && <span class="chip">{lang().adjective}</span>}
                   {s.external && <span class="chip chip-quiet">file</span>}
                   {!s.text && <span class="chip chip-quiet">image, can't read</span>}
                 </span>
@@ -290,14 +291,14 @@ function JellyfinForm({ busy, setBusy, onPreview, onCancel }: {
     <form class="form" onSubmit={search}>
       <label>
         <span>Search your library</span>
-        <input type="search" lang="zh-CN" value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder="A film, series or episode" />
+        <input type="search" lang={tl()} value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder="A film, series or episode" />
       </label>
       {series && (
         <p class="muted small">
           <button type="button" class="link-btn" onClick={() => { setSeries(null); void load(importApi.jellyfinSearch(q.trim()), setItems); }}>
             ‹ Results
           </button>{" "}
-          <span lang="zh-CN">{series.name}</span>
+          <span lang={tl()}>{series.name}</span>
         </p>
       )}
       {items && items.length === 0 && <p class="muted">Nothing found.</p>}
@@ -306,11 +307,11 @@ function JellyfinForm({ busy, setBusy, onPreview, onCancel }: {
           {items.map((it) => (
             <li key={it.id}>
               <button type="button" class="pick-row" disabled={busy} onClick={() => open(it)}>
-                <span lang="zh-CN">{it.name}</span>
+                <span lang={tl()}>{it.name}</span>
                 <span class="text-meta">
                   {it.type === "Series" ? <span class="chip chip-quiet">series ›</span>
-                    : it.chinese_subtitles ? <span class="chip">中文 subtitles</span>
-                    : it.chinese_subtitles === 0 ? <span class="chip chip-quiet">no Chinese subtitles</span> : null}
+                    : it.target_subtitles ? <span class="chip"><span lang={tl()}>{lang().native_name || lang().adjective}</span> subtitles</span>
+                    : it.target_subtitles === 0 ? <span class="chip chip-quiet">no {lang().adjective} subtitles</span> : null}
                 </span>
               </button>
             </li>
@@ -348,11 +349,11 @@ function PreviewCard({ preview, onBack }: { preview: ImportPreview; onBack: () =
     <section class="card form import-preview" aria-busy={busy}>
       <label>
         <span>Title</span>
-        <input lang="zh-CN" value={title} onInput={(e) => setTitle(e.currentTarget.value)} />
+        <input lang={tl()} value={title} onInput={(e) => setTitle(e.currentTarget.value)} />
       </label>
       <div class="cov-line">
         <span class="cov-big">{pct(preview.coverage)} known</span>
-        <span class="muted"> · {num(preview.characters)} characters</span>
+        <span class="muted"> · {num(preview.characters)} {lang().script_unit}</span>
         {preview.new_words > 0 && <span class="muted"> · {num(preview.new_words)} new words</span>}
       </div>
       <div class="text-meta">
@@ -366,16 +367,16 @@ function PreviewCard({ preview, onBack }: { preview: ImportPreview; onBack: () =
         <ol class="parts">
           {preview.parts.map((p, i) => (
             <li key={i}>
-              <span lang="zh-CN" class="part-excerpt">{p.body.slice(0, 24)}…</span>
+              <span lang={tl()} class="part-excerpt">{p.body.slice(0, 24)}…</span>
               <span class="muted small">{pct(p.coverage)} · {num(p.characters)}</span>
             </li>
           ))}
         </ol>
       ) : (
-        <p class="excerpt" lang="zh-CN">{preview.parts[0]?.body.slice(0, 140)}{(preview.parts[0]?.body.length ?? 0) > 140 ? "…" : ""}</p>
+        <p class="excerpt" lang={tl()}>{preview.parts[0]?.body.slice(0, 140)}{(preview.parts[0]?.body.length ?? 0) > 140 ? "…" : ""}</p>
       )}
       <div class="form-foot">
-        <span class="muted">{multi ? `Saved as ${preview.parts.length} texts of about 1,500 characters.` : "Words you meet here can go to your reviews."}</span>
+        <span class="muted">{multi ? `Saved as ${preview.parts.length} texts of about 1,500 ${lang().script_unit}.` : "Words you meet here can go to your reviews."}</span>
         <span class="row tight">
           <button type="button" class="btn quiet" onClick={onBack} disabled={busy}>Back</button>
           <button type="button" class="btn primary" onClick={add} disabled={busy}>

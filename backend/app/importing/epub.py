@@ -14,7 +14,7 @@ from xml.etree import ElementTree as ET
 
 from app.importing import ImportProblem
 from app.importing.draft import MAX_BODY, Draft, Part
-from app.importing.textutil import han_count, html_to_text
+from app.importing.textutil import script_count, html_to_text
 
 MAX_UPLOAD = 50 * 1024 * 1024
 MAX_MEMBER = 20 * 1024 * 1024  # uncompressed, per file: refuses zip bombs
@@ -140,7 +140,7 @@ def read_book(data: bytes) -> Book:
             except ImportProblem:
                 continue
             text, headings = html_to_text(raw.decode("utf-8", errors="replace"))
-            if han_count(text) == 0:
+            if script_count(text) == 0:
                 continue  # cover pages, image-only pages, English front matter
             ch_title = toc.get(item["path"]) or (headings[0] if headings else f"Chapter {len(chapters) + 1}")
             chapters.append(Chapter(len(chapters), ch_title[:200], item["path"], text))
@@ -154,7 +154,7 @@ def chapter_list(book: Book) -> dict:
         "title": book.title,
         "author": book.author,
         "chapters": [
-            {"index": c.index, "title": c.title, "characters": han_count(c.text), "excerpt": c.text[:60]}
+            {"index": c.index, "title": c.title, "characters": script_count(c.text), "excerpt": c.text[:60]}
             for c in book.chapters
         ],
     }

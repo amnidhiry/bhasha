@@ -1,3 +1,4 @@
+import { tl } from "../lang";
 import { useEffect, useState } from "preact/hooks";
 import { api, type CardHelp as Help } from "../api";
 import { speak } from "../speech";
@@ -27,14 +28,14 @@ export function CardHelp({ cardId, onSuspended }: { cardId: number; onSuspended:
     <div class="card-help" onClick={(e) => e.stopPropagation()}>
       {h.characters.map((c) => (
         <div key={c.char} class="ch-row">
-          <a class="ch-glyph" lang="zh-CN" href={`#/char/${encodeURIComponent(c.char)}`}>{c.char}</a>
+          <a class="ch-glyph" lang={tl()} href={`#/char/${encodeURIComponent(c.char)}`}>{c.char}</a>
           <div>
             <p class="small"><b>{c.reading}</b> {c.definition}</p>
             {c.parts.length > 0 && (
               <p class="small">
                 {c.parts.map((p, i) => (
                   <span key={i} class="ch-part">
-                    <span lang="zh-CN">{p.part}</span> {p.meaning ?? ""}
+                    <span lang={tl()}>{p.part}</span> {p.meaning ?? ""}
                     {p.role && <span class={`chip ${p.role === "meaning" ? "" : "chip-quiet"}`}>{p.role}</span>}
                   </span>
                 ))}
@@ -51,7 +52,7 @@ export function CardHelp({ cardId, onSuspended }: { cardId: number; onSuspended:
       )}
       {h.examples.map((e) => (
         <p key={e.id} class="small">
-          <span lang="zh-CN" class="ex-zh-inline" onClick={() => speak(e.text)}>{e.text}</span> {e.translation}
+          <span lang={tl()} class="ex-zh-inline" onClick={() => speak(e.text)}>{e.text}</span> {e.translation}
         </p>
       ))}
       <button class="link-btn" onClick={() => api.cardSuspend(cardId).then(() => { toast("Suspended. It won't come up until you unsuspend it."); onSuspended(); })}>

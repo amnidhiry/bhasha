@@ -1,5 +1,7 @@
 // Typed client for the bhasha API. Same origin: the backend serves this app.
 
+import type { LanguageMeta } from "./lang";
+
 export type Status = "new" | "learning" | "known" | "ignored" | null;
 
 export interface Syllable {
@@ -8,7 +10,11 @@ export interface Syllable {
   surface: string;
   citation_display: string;
   surface_display: string;
+  /** Spans of `text` where the sound departs from the letters (bn), as [start, end, kind]. */
+  traps?: [number, number, string][];
 }
+
+export interface Morph { segment: string; grammar_key: string | null; features: Record<string, unknown> }
 
 export interface Tok {
   position: number;
@@ -19,16 +25,20 @@ export interface Tok {
   status: Status;
   show_reading: boolean;
   syllables: Syllable[];
+  /** Dictionary form when it differs from the surface (inflecting languages). */
+  lemma?: string;
+  morph?: Morph[];
 }
 
 export interface TextMeta {
   title_en?: string;
-  sentences?: { zh: string; en: string; id?: number; url?: string }[];
+  /** `text` since the language-neutral core; older Mandarin texts have `zh`. */
+  sentences?: { text?: string; zh?: string; en: string; id?: number; url?: string }[];
   attribution?: string;
   pre_teach?: { id: number; words: string[] };
   pre_teach_for?: { id: number; title: string };
   sentence_map?: number[];
-  questions?: { question_zh: string; question_en: string; answer_en: string }[];
+  questions?: { question?: string; question_zh?: string; question_en: string; answer_en: string }[];
   targets?: string[];
   new_words?: string[];
   accepted_with_issues?: boolean;
@@ -83,6 +93,9 @@ export interface TextSummary {
 
 export interface Lookup {
   query: string;
+  /** The inflected form that was tapped, when the lookup resolved it to a lemma. */
+  form?: string | null;
+  language?: string;
   reading: { citation: string; citation_display: string; surface_display: string };
   units: {
     id: number;
@@ -94,8 +107,9 @@ export interface Lookup {
     meanings: string[];
     pos: string[];
   }[];
-  cedict: { traditional: string; pinyin: string; pinyin_display: string; glosses: string[] }[];
-  characters: {
+  cedict?: { traditional: string; pinyin: string; pinyin_display: string; glosses: string[] }[];
+  dictionary?: { reading: string; reading_display: string; pos: string | null; glosses: string[]; tags: string[]; source: string }[];
+  characters?: {
     character: string;
     definition?: string | null;
     pinyin?: string[];
@@ -240,7 +254,7 @@ export interface JournalEntry {
     sentence_index: number; card_id: number | null }[];
 }
 
-export interface TutorScenario { id: string; title: string; title_zh: string; setting: string; goal: string; role: string; completed?: number }
+export interface TutorScenario { id: string; title: string; title_native: string; setting: string; goal: string; role: string; completed?: number }
 
 export interface TutorTurn {
   id: number;
@@ -275,14 +289,21 @@ export interface CardHelp {
 }
 
 export interface Progress {
+  language: string;
   known_words: number;
-  known_characters: number;
+  /** Only for languages with the "characters" feature. */
+  known_characters?: number;
   cards: number;
-  hsk_version: string;
-  hsk_cumulative: { level: string; words: number; known: number; coverage: number | null }[];
+  framework: string;
+  level_version: string;
+  level_cumulative: { level: string; label: string; words: number; known: number; coverage: number | null }[];
   texts_finished: number;
-  characters_read: number;
+  /** Reading volume in `read_unit` (characters for zh, words otherwise). */
+  read: number;
+  read_unit: string;
 }
+
+export interface Me { name: string; active_language: string; language: LanguageMeta }
 
 export type Transparency = "clear" | "partial" | "opaque" | "unknown";
 export type CharStatus = "known" | "learning" | "new";
@@ -385,7 +406,12 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 
 const post = <T>(path: string, body: unknown) => req<T>(path, { method: "POST", body: JSON.stringify(body) });
 
+const put = <T>(path: string, body: unknown) => req<T>(path, { method: "PUT", body: JSON.stringify(body) });
+
 export const api = {
+  me: () => req<Me>("/me"),
+  setLanguage: (code: string) => put<Me>("/me", { active_language: code }),
+  languages: () => req<LanguageMeta[]>("/languages"),
   texts: () => req<TextSummary[]>("/texts"),
   text: (id: number) => req<TextDoc>(`/texts/${id}`),
   importText: (title: string, body: string) => post<TextDoc>("/texts/import", { title, body }),
@@ -402,7 +428,7 @@ export const api = {
   llmModels: () => req<{ id: string; name: string }[]>("/llm/models"),
   setModel: (model: string) => req<LlmStatus>("/llm/model", { method: "PUT", body: JSON.stringify({ model }) }),
   signOut: () => post<LlmStatus>("/llm/signout", {}),
-  finish: (id: number) => post<{ exposures: number; characters_read: number }>(`/texts/${id}/finish`, {}),
+  finish: (id: number) => post<{ exposures: number; read: number; read_unit: string }>(`/texts/${id}/finish`, {}),
   lookup: (q: string, opts: { textId?: number; log?: boolean } = {}) => {
     const p = new URLSearchParams({ q });
     if (opts.textId != null) p.set("text_id", String(opts.textId));
@@ -446,7 +472,7 @@ export const api = {
     req<{ words: string[]; unknown: number; existing: { id: number; words: string[] } | null }>(`/texts/${id}/pre-teach`),
   preTeach: (id: number) => post<{ job_id: number; words: string[] }>(`/texts/${id}/pre-teach`, {}),
   explain: (sentence: string, question: string, focus?: string) =>
-    post<{ answer: string; chunks: { zh: string; role: string }[]; points: { name: string; url: string }[] }>(
+    post<{ answer: string; chunks: { text: string; role: string }[]; points: { name: string; url: string | null }[] }>(
       "/explain", { sentence, question, focus }),
   cardHelp: (id: number) => req<CardHelp>(`/cards/${id}/help`),
   cardMnemonic: (id: number) => post<{ mnemonic: string }>(`/cards/${id}/mnemonic`, {}),
@@ -520,7 +546,8 @@ export interface JellyfinItem {
   id: string;
   name: string;
   type: string; // Movie | Episode | Series
-  chinese_subtitles?: number | null;
+  /** Text subtitle tracks in the language being studied. */
+  target_subtitles?: number | null;
 }
 
 export interface JellyfinSubtitle {
@@ -531,7 +558,8 @@ export interface JellyfinSubtitle {
   codec: string | null;
   external: boolean;
   default: boolean;
-  chinese: boolean;
+  /** In the language being studied. */
+  target: boolean;
   text: boolean;
 }
 

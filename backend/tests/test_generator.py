@@ -7,8 +7,8 @@ from app.llm.providers import FakeProvider
 
 def story(*sentences, targets=("银行",)):
     return {"title": "工作", "title_en": "Work", "target_words_used": list(targets),
-            "sentences": [{"zh": zh, "en": en} for zh, en in sentences],
-            "questions": [{"question_zh": "我在哪儿工作？", "question_en": "Where do I work?", "answer_en": "At a bank."}]}
+            "sentences": [{"text": zh, "en": en} for zh, en in sentences],
+            "questions": [{"question": "我在哪儿工作？", "question_en": "Where do I work?", "answer_en": "At a bank."}]}
 
 
 @pytest.fixture()
@@ -24,7 +24,7 @@ def test_covered_splits_merged_tokens():
 
 
 def test_check_flags_unknown_and_too_many_new():
-    b = Brief(topic="", genre="story", sentences=6, known=["我", "在", "工作"], pool=["朋友"], level="1",
+    b = Brief(language="zh", topic="", genre="story", sentences=6, known=["我", "在", "工作"], pool=["朋友"], level="1",
               targets=["银行"], max_new=0)
     r = check(b, ["我在银行工作。", "朋友在量子银行工作。"])
     assert r.out_of_bounds == ["量子"]

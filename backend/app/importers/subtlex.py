@@ -49,14 +49,14 @@ def parse(text: str) -> list[tuple[str, int, float, float]]:
 
 def import_subtlex(db: Session, path: Path) -> int:
     rows = parse(_decode(path.read_bytes()))
-    db.execute(delete(WordFrequency))
+    db.execute(delete(WordFrequency).where(WordFrequency.language == "zh"))
     seen: set[str] = set()
     mappings = []
     for rank, (word, _count, pm, cdp) in enumerate(rows, start=1):
         if word in seen:
             continue
         seen.add(word)
-        mappings.append({"word": word, "rank": rank, "per_million": pm, "cd_percent": cdp})
+        mappings.append({"language": "zh", "word": word, "rank": rank, "per_million": pm, "cd_percent": cdp})
     for i in range(0, len(mappings), 5000):
         db.bulk_insert_mappings(WordFrequency, mappings[i : i + 5000])
     db.flush()

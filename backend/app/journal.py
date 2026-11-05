@@ -17,69 +17,62 @@ from app.llm import gateway
 from app.models import Card, ErrorItem, JournalEntry, Unit
 from app.packs import get_pack
 from app.packs.base import WORD
-from app.packs.zh.pinyin import citation_syllables
 
-CATEGORIES = {
-    "word_choice": "Word choice",
-    "measure_word": "Measure word",
-    "word_order": "Word order",
-    "aspect_particle": "了 / 过 / 着",
-    "missing_word": "Missing word",
-    "extra_word": "Extra word",
-    "wrong_character": "Wrong character",
-    "grammar": "Grammar",
-}
-ASPECT = {"了", "过", "着"}
-MAX_CLOZE_CHARS = 12
 
-SCHEMA = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["sentences", "comment"],
-    "properties": {
-        "comment": {"type": "string"},
-        "sentences": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["original", "corrected", "english", "errors"],
-                "properties": {
-                    "original": {"type": "string"},
-                    "corrected": {"type": "string"},
-                    "english": {"type": "string"},
-                    "errors": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "required": ["category", "wrong", "right", "explanation"],
-                            "properties": {
-                                "category": {"type": "string", "enum": list(CATEGORIES)},
-                                "wrong": {"type": "string"},
-                                "right": {"type": "string"},
-                                "explanation": {"type": "string"},
+def categories(language: str) -> dict[str, str]:
+    return get_pack(language).prompts.error_categories or {"word_choice": "Word choice", "grammar": "Grammar"}
+
+
+def schema(language: str) -> dict:
+    return {
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["sentences", "comment"],
+        "properties": {
+            "comment": {"type": "string"},
+            "sentences": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["original", "corrected", "english", "errors"],
+                    "properties": {
+                        "original": {"type": "string"},
+                        "corrected": {"type": "string"},
+                        "english": {"type": "string"},
+                        "errors": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["category", "wrong", "right", "explanation"],
+                                "properties": {
+                                    "category": {"type": "string", "enum": list(categories(language))},
+                                    "wrong": {"type": "string"},
+                                    "right": {"type": "string"},
+                                    "explanation": {"type": "string"},
+                                },
                             },
                         },
                     },
                 },
             },
         },
-    },
-}
+    }
 
-SYSTEM = """You correct short journal entries written in Mandarin (Simplified) by a native English speaker who is a beginner (around HSK {level}).
+
+SYSTEM = """You correct short journal entries written in {language} by a native English speaker who is a beginner (around {framework} {level}).
 
 For each sentence they wrote, in order:
 - "original": the sentence exactly as written.
-- "corrected": the smallest change that makes it correct and natural, keeping their meaning and their words where possible. If it's already fine, repeat it unchanged.
+- "corrected": the smallest change that makes it correct and natural, keeping their meaning and their words where possible. If it's already fine, repeat it unchanged.{note}
 - "english": a natural English translation of the corrected sentence.
 - "errors": one item per mistake, [] if none. "wrong" is the exact text from the original ("" if something was missing); "right" is the exact replacement text in the corrected sentence ("" if something should be deleted). Keep both as short as possible. "explanation" is one short English sentence a beginner understands; avoid jargon or gloss it. Categories: {categories}.
 
 Don't flag punctuation-only or full-width/half-width differences, and don't rewrite for style. "comment" is one or two encouraging English sentences on the entry overall, naming the one thing most worth practising next."""
 
 
-def writing_prompt(db: Session, user_id: int) -> dict:
+def writing_prompt(db: Session, user_id: int, language: str = "zh") -> dict:
     """Words to try using (recently mined or due soon) and an idea, rotating daily."""
     from app.generator import _auto_targets
 
@@ -89,34 +82,33 @@ def writing_prompt(db: Session, user_id: int) -> dict:
         "What's the weather like, and what will you do?", "Describe your work or studies.",
         "Something you bought recently.", "A place you'd like to visit.",
     ]
-    return {"words": _auto_targets(db, user_id, limit=5), "idea": ideas[date.today().toordinal() % len(ideas)]}
+    return {"words": _auto_targets(db, user_id, language, limit=5), "idea": ideas[date.today().toordinal() % len(ideas)]}
 
 
-def _level(db: Session, user_id: int) -> str:
-    from app.generator import _hsk_level_pool
+def _level(db: Session, user_id: int, language: str = "zh") -> str:
+    from app.generator import _level_pool
     from app.learner import known_unit_ids
 
-    known = {h for (h,) in db.execute(select(Unit.headword).where(Unit.id.in_(known_unit_ids(db, user_id, "zh"))))}
-    return _hsk_level_pool(db, known)[0]
+    ids = known_unit_ids(db, user_id, language)
+    known = {h for (h,) in db.execute(select(Unit.headword).where(Unit.id.in_(ids)))}
+    return _level_pool(db, language, known)[0]
 
 
-def _unit_for(db: Session, right: str, category: str) -> Unit:
-    """The unit an error is about: the particle for aspect errors, the measure word for
-    classifier errors, else the first word of the fix that's already a unit."""
-    words = [t.surface for t in get_pack("zh").analyze(right) if t.kind == WORD]
-    if category == "aspect_particle":
-        words = [w for w in words if w in ASPECT] or words
-    elif category == "measure_word":
-        words = [w for w in words if len(w) == 1] or words
+def _unit_for(db: Session, right: str, category: str, language: str = "zh") -> Unit:
+    """The unit an error is about (the pack picks: zh takes the particle for aspect
+    errors, the measure word for classifier errors), else the first word of the fix
+    that's already a unit, else a phrase unit."""
+    pack = get_pack(language)
+    words = pack.error_unit_words(category, [t.head for t in pack.analyze(right) if t.kind == WORD])
     for w in words:
-        unit = db.scalar(select(Unit).where(Unit.language == "zh", Unit.type == "word", Unit.headword == w)
+        unit = db.scalar(select(Unit).where(Unit.language == language, Unit.type == "word", Unit.headword == w)
                          .order_by(Unit.id))
         if unit is not None:
             return unit
     head = right[:64]
-    unit = db.scalar(select(Unit).where(Unit.language == "zh", Unit.type == "phrase", Unit.headword == head))
+    unit = db.scalar(select(Unit).where(Unit.language == language, Unit.type == "phrase", Unit.headword == head))
     if unit is None:
-        unit = Unit(language="zh", type="phrase", headword=head, reading=" ".join(citation_syllables(head)),
+        unit = Unit(language=language, type="phrase", headword=head, reading=pack.reading(head),
                     level_tags=[], track_tags=[], extra={"source": "journal"})
         db.add(unit)
         db.flush()
@@ -132,11 +124,13 @@ def record_sentence(db: Session, entry: JournalEntry, original: str, corrected: 
     sentences.append({"original": original, "corrected": corrected, "english": english.strip()})
     entry.sentences = sentences
     index = len(sentences) - 1
+    lang = entry.language or "zh"
+    cats, max_cloze = categories(lang), get_pack(lang).max_cloze_len
     items: list[ErrorItem] = []
     if corrected == original:
         return items  # the model listed errors but changed nothing: trust the text, not the list
     for e in errors or []:
-        cat = e.get("category") if e.get("category") in CATEGORIES else "grammar"
+        cat = e.get("category") if e.get("category") in cats else "grammar"
         wrong, right = str(e.get("wrong", "")).strip(), str(e.get("right", "")).strip()
         if (wrong and wrong not in original) or (right and right not in corrected) or (not wrong and not right) \
                 or wrong == right:
@@ -146,8 +140,8 @@ def record_sentence(db: Session, entry: JournalEntry, original: str, corrected: 
                          sentence_index=index)
         db.add(item)
         db.flush()
-        if right and len(right) <= MAX_CLOZE_CHARS:
-            unit = _unit_for(db, right, cat)
+        if right and len(right) <= max_cloze:
+            unit = _unit_for(db, right, cat, lang)
             item.unit_id = unit.id
             card = Card(user_id=entry.user_id, unit_id=unit.id, facet=f"cloze:{item.id}",
                         due=datetime.now(timezone.utc), context_sentence=corrected,
@@ -167,7 +161,8 @@ def apply_correction(db: Session, entry: JournalEntry, data: dict) -> list[Error
         if str(s.get("original", "")).strip():
             items += record_sentence(db, entry, str(s.get("original", "")), str(s.get("corrected", "")),
                                      str(s.get("english", "")), s.get("errors") or [])
-    entry.corrected = "".join(s["corrected"] for s in entry.sentences)
+    joiner = get_pack(entry.language or "zh").sentence_joiner
+    entry.corrected = joiner.join(s["corrected"] for s in entry.sentences)
     entry.comment = str(data.get("comment", "")).strip() or None
     entry.status = "done"
     db.commit()
@@ -177,16 +172,23 @@ def apply_correction(db: Session, entry: JournalEntry, data: dict) -> list[Error
 def correct(db: Session, entry: JournalEntry) -> list[ErrorItem]:
     if entry.status == "done":
         return []
-    system = SYSTEM.format(level=_level(db, entry.user_id),
-                           categories=", ".join(f"{k} ({v})" for k, v in CATEGORIES.items()))
-    data = gateway.complete_json(db, "journal", system, entry.text, SCHEMA, user_id=entry.user_id,
+    lang = entry.language or "zh"
+    pack = get_pack(lang)
+    note = pack.prompts.learner_note
+    system = SYSTEM.format(language=pack.prompts.language_name, framework=pack.levels.name or "level",
+                           level=_level(db, entry.user_id, lang), note=(" " + note) if note else "",
+                           categories=", ".join(f"{k} ({v})" for k, v in categories(lang).items()))
+    data = gateway.complete_json(db, "journal", system, entry.text, schema(lang), user_id=entry.user_id,
                                  cache_key=f"bhasha-journal-{entry.user_id}").data
     return apply_correction(db, entry, data)
 
 
-def category_counts(db: Session, user_id: int, days: int = 30) -> dict[str, int]:
+def category_counts(db: Session, user_id: int, days: int = 30, language: str | None = None) -> dict[str, int]:
     since = datetime.now(timezone.utc) - timedelta(days=days)
     counts: dict[str, int] = {}
-    for (cat,) in db.execute(select(ErrorItem.category).where(ErrorItem.user_id == user_id, ErrorItem.created_at >= since)):
+    q = select(ErrorItem.category).where(ErrorItem.user_id == user_id, ErrorItem.created_at >= since)
+    if language:
+        q = q.join(JournalEntry, ErrorItem.entry_id == JournalEntry.id).where(JournalEntry.language == language)
+    for (cat,) in db.execute(q):
         counts[cat] = counts.get(cat, 0) + 1
     return dict(sorted(counts.items(), key=lambda kv: -kv[1]))

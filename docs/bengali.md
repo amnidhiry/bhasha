@@ -665,6 +665,16 @@ create_text → serialize → mine → review → progress → generator check w
 that nothing outside `app/packs/zh/` imports `app.packs.zh` or `pypinyin`/`jieba`; API tests that `language=xx`
 never touches CEDICT tables.
 
+*Status: done.* Migration 0013 adds `app_user.active_language`, language columns on `journal_entry`,
+`tutor_session` and `example_sentence`, a `(language, word)` key on `word_frequency`, and `dictionary_entry`.
+`GET /api/languages` and `GET/PUT /api/me` choose the language, and every core endpoint follows it. The PWA takes
+`lang` attributes, tab glyphs, the reading-aid name, the starter text and its feature gates (Sounds, Characters,
+Writing, tone colours, voice check) from the pack's `meta()`. `tests/test_language_neutral.py` drives the toy pack
+(an inflecting `-s` plural, so lemmas and morphology are covered) through reader, lookup, mining, review, progress,
+generator, journal, tutor and subtitle import. Its architecture test lists the zh feature modules that may import
+the Mandarin pack. Deferred to Stage 3, where speech for Bengali lands: `audio_item` and a per-language voice choice.
+For Stage 1, packs must emit whitespace as `PUNCT` tokens: the reader joins tokens with no separator.
+
 **Stage 1: readable and reviewable Bengali texts.**
 Normalizer, tokenizer, `morph` with core paradigms, G2P (Google lexicon + rules + Kolkata overrides),
 romanization and ISO, Wiktionary and lexicon importers, provisional frequency tags from OpenSubtitles, paste

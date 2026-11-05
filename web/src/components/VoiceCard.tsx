@@ -1,3 +1,4 @@
+import { tl } from "../lang";
 import { useEffect, useState } from "preact/hooks";
 import { api, type SpeechStatus } from "../api";
 import { pct } from "../format";
@@ -71,7 +72,7 @@ export function VoiceCard() {
             <p class="muted small">Not tone-checked yet. A voice that gets tones wrong teaches wrong tones, so check before relying on it.</p>
           )}
           {current && current.misses.length > 0 && (
-            <p class="muted small" lang="zh-CN">
+            <p class="muted small" lang={tl()}>
               Misheard:{" "}
               {current.misses.map((m) => (
                 <button key={m.key} class="link-btn inline" onClick={() => speak(m.char)}>

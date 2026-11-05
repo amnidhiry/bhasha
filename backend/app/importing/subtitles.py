@@ -2,7 +2,7 @@
 
 Cue numbers, timestamps, VTT headers/NOTE/STYLE blocks and markup (<i>, <font>,
 <c.x>, <v Name>, ASS {\\an8} overrides) go. Bilingual files keep their Chinese
-lines (Han share of a line, see textutil.han_ratio). Cues are merged into
+lines (the target script's share of a line, see textutil.script_ratio). Cues are merged into
 readable lines: rolling duplicates are dropped, and a cue that ends mid-clause
 (a comma, an ellipsis) is joined to the next. Long files are split into parts
 of about 1,500 characters."""
@@ -11,7 +11,7 @@ import re
 
 from app.importing import ImportProblem
 from app.importing.draft import Draft, number_parts
-from app.importing.textutil import decode, han_count, han_ratio, split_parts
+from app.importing.textutil import decode, language_adjective, script_count, script_ratio, split_parts
 
 MAX_UPLOAD = 5 * 1024 * 1024
 PART_CHARS = 1500
@@ -20,7 +20,7 @@ _TIMING = re.compile(r"\d{1,2}:\d{2}(?::\d{2})?[.,]\d{1,3}\s*-->")
 _TAG = re.compile(r"<[^>]*>")
 _ASS = re.compile(r"\{\\[^}]*\}")
 _CONTINUES = ("，", ",", "、", "…", "...", "：", ":", "——", "-", "～")
-_CHINESE_LINE = 0.5
+_TARGET_LINE = 0.5  # share of a line in the target script to keep it
 
 
 def _cues(text: str) -> list[list[str]]:
@@ -77,15 +77,15 @@ def subtitle_lines(data: bytes) -> tuple[list[str], bool]:
     if not cues:
         raise ImportProblem("Couldn't find any subtitle cues in that file.")
     all_lines = [ln for cue in cues for ln in cue]
-    chinese = [ln for ln in all_lines if han_ratio(ln) >= _CHINESE_LINE]
-    if not chinese:
-        raise ImportProblem("That subtitle file has no Chinese lines.")
-    bilingual = len(chinese) < len(all_lines) * 0.9 and len(all_lines) - len(chinese) >= 2
+    target = [ln for ln in all_lines if script_ratio(ln) >= _TARGET_LINE]
+    if not target:
+        raise ImportProblem(f"That subtitle file has no {language_adjective()} lines.")
+    bilingual = len(target) < len(all_lines) * 0.9 and len(all_lines) - len(target) >= 2
 
     out: list[str] = []
     prev_cue = ""
     for cue in cues:
-        text = _join([_clean_line(ln) for ln in cue if han_ratio(ln) >= _CHINESE_LINE])
+        text = _join([_clean_line(ln) for ln in cue if script_ratio(ln) >= _TARGET_LINE])
         if not text or text == prev_cue:
             continue  # English-only cue, or a rolling repeat
         prev_cue = text
@@ -103,8 +103,9 @@ def draft_from_subtitles(data: bytes, title: str, kind: str = "subtitles", sourc
     lines, bilingual = subtitle_lines(data)
     bodies = split_parts(lines, PART_CHARS)
     title = (title.strip() or "Subtitles")[:240]
-    warnings = ["Bilingual file: kept the Chinese lines."] if bilingual else []
-    if han_count("\n".join(lines)) < 20:
-        warnings.append("Very little Chinese in this file.")
+    adj = language_adjective()
+    warnings = [f"Bilingual file: kept the {adj} lines."] if bilingual else []
+    if script_count("\n".join(lines)) < 20:
+        warnings.append(f"Very little {adj} in this file.")
     return Draft(kind=kind, title=title, parts=number_parts(title, bodies), source_url=source_url,
                  meta={**(meta or {}), "bilingual": bilingual, "lines": len(lines)}, warnings=warnings)

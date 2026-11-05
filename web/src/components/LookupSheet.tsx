@@ -1,7 +1,7 @@
+import { has, levelTagLabel, tl } from "../lang";
 import { useEffect, useState } from "preact/hooks";
 import { api, type Lookup, type Status, type Syllable } from "../api";
 import { speak, canSpeak } from "../speech";
-import { levelLabel } from "../tones";
 import { Pinyin } from "./Pinyin";
 import { ExplainBox } from "./ExplainBox";
 import { Sheet } from "./Sheet";
@@ -51,8 +51,10 @@ export function LookupSheet({ target, onClose, onChanged }: {
   const spoken = syl.map((s) => s.surface_display).join(" ");
   const written = syl.map((s) => s.citation_display).join(" ");
   const primary = data?.units.find((u) => u.meanings.length) ?? data?.units[0];
-  const level = primary ? levelLabel(primary.level_tags) : null;
-  const meanings = primary?.meanings.length ? primary.meanings : (data?.cedict[0]?.glosses ?? []);
+  const level = primary ? levelTagLabel(primary.level_tags) : null;
+  const meanings = primary?.meanings.length ? primary.meanings
+    : (data?.cedict?.[0]?.glosses ?? data?.dictionary?.[0]?.glosses ?? []);
+  const chars = data?.characters ?? [];
   const otherReadings = (data?.units ?? []).filter((u) => u !== primary && u.meanings.length);
 
   async function act(fn: () => Promise<unknown>, msg: string) {
@@ -74,12 +76,15 @@ export function LookupSheet({ target, onClose, onChanged }: {
     <Sheet open onClose={onClose} label={`Lookup: ${target.surface}`}>
       <header class="lk-head">
         <div>
-          <div class="lk-word" lang="zh-CN">{target.surface}</div>
+          <div class="lk-word" lang={tl()}>{target.surface}</div>
           {syl.length > 0 && (
             <div class="lk-reading">
               <Pinyin numeric={spokenNum} display={spoken} />
-              {written !== spoken && <span class="lk-written" title="Dictionary (citation) tones">written {written}</span>}
+              {written !== spoken && <span class="lk-written" title="As written, before sound changes">written {written}</span>}
             </div>
+          )}
+          {data?.form && (
+            <div class="muted small">dictionary form <span lang={tl()}>{data.query}</span></div>
           )}
         </div>
         {canSpeak() && (
@@ -92,11 +97,11 @@ export function LookupSheet({ target, onClose, onChanged }: {
       <div class="lk-meta">
         {level && <span class="chip">{level}</span>}
         {primary && primary.classifiers.length > 0 && (
-          <span class="chip chip-quiet" lang="zh-CN">MW {primary.classifiers.join(" · ")}</span>
+          <span class="chip chip-quiet" lang={tl()}>MW {primary.classifiers.join(" · ")}</span>
         )}
         {target.status && <span class={`chip status-${target.status}`}>{target.status}</span>}
         {data?.frequency && (
-          <span class="chip chip-quiet" title={`${data.frequency.per_million.toFixed(1)} per million words of film subtitles (SUBTLEX-CH)`}>
+          <span class="chip chip-quiet" title={`${data.frequency.per_million.toFixed(1)} per million words${has("tonecheck") ? " of film subtitles (SUBTLEX-CH)" : ""}`}>
             #{data.frequency.rank.toLocaleString()} most common
           </span>
         )}
@@ -112,7 +117,7 @@ export function LookupSheet({ target, onClose, onChanged }: {
               {meanings.slice(0, 5).map((m, i) => <li key={i}>{m}</li>)}
             </ol>
           ) : (
-            <p class="muted">No dictionary entry. It may be a segmentation slip; check the characters below.</p>
+            <p class="muted">No dictionary entry.{chars.length > 0 ? " It may be a segmentation slip; check the characters below." : ""}</p>
           )}
           {otherReadings.map((u) => (
             <p key={u.id} class="lk-alt">
@@ -120,13 +125,13 @@ export function LookupSheet({ target, onClose, onChanged }: {
             </p>
           ))}
 
-          {data.characters.length > 0 ? (
+          {has("characters") && chars.length > 0 ? (
             <div class="lk-chars">
-              {data.characters.map((c) => (
+              {chars.map((c) => (
                 <div class="lk-char" key={c.character}>
                   <a class="lk-char-link" href={`#/char/${encodeURIComponent(c.character)}`} onClick={onClose}
                     aria-label={`Character page for ${c.character}`} />
-                  <span class="lk-char-glyph" lang="zh-CN">{c.character}</span>
+                  <span class="lk-char-glyph" lang={tl()}>{c.character}</span>
                   <button class="btn quiet lk-write" aria-label={`Practise writing ${c.character}`}
                     onClick={() => api.handwritingAdd({ characters: [c.character], context: target.surface })
                       .then((r) => toast(r.created.length ? `${c.character} added to Writing` : `Already practising ${c.character}`))
@@ -135,14 +140,14 @@ export function LookupSheet({ target, onClose, onChanged }: {
                   </button>
                   <span class="lk-char-body">
                     {parts(c.decomposition).length > 1 && (
-                      <span class="lk-parts" lang="zh-CN">{parts(c.decomposition).join(" + ")}</span>
+                      <span class="lk-parts" lang={tl()}>{parts(c.decomposition).join(" + ")}</span>
                     )}
                     <span class="muted">{c.definition ?? ""}</span>
                     {c.etymology?.type === "pictophonetic" && (c.etymology.semantic || c.etymology.phonetic) && (
                       <span class="lk-ety">
-                        {c.etymology.semantic && <><b lang="zh-CN">{c.etymology.semantic}</b> meaning</>}
+                        {c.etymology.semantic && <><b lang={tl()}>{c.etymology.semantic}</b> meaning</>}
                         {c.etymology.semantic && c.etymology.phonetic && " · "}
-                        {c.etymology.phonetic && <><b lang="zh-CN">{c.etymology.phonetic}</b> sound</>}
+                        {c.etymology.phonetic && <><b lang={tl()}>{c.etymology.phonetic}</b> sound</>}
                       </span>
                     )}
                     {c.etymology?.hint && c.etymology.type !== "pictophonetic" && (
@@ -161,7 +166,7 @@ export function LookupSheet({ target, onClose, onChanged }: {
           <h3>Examples</h3>
           {data.examples.map((e) => (
             <div key={e.id} class="example">
-              <p class="ex-zh" lang="zh-CN">
+              <p class="ex-zh" lang={tl()}>
                 {e.text}
                 {canSpeak() && (
                   <button class="icon-btn tiny" aria-label="Play sentence" onClick={() => speak(e.text)}><PlayIcon /></button>

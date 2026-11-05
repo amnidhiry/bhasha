@@ -1,3 +1,4 @@
+import { lang, tl } from "../lang";
 import { useState } from "preact/hooks";
 import { api, ApiError } from "../api";
 import { go } from "../router";
@@ -49,11 +50,11 @@ export function GenerateForm({ onCancel, onQueued }: { onCancel: () => void; onQ
     <form class="card form" onSubmit={submit} aria-busy={busy}>
       <label>
         <span>Topic</span>
-        <input lang="zh-CN" value={topic} onInput={(e) => setTopic(e.currentTarget.value)} placeholder="Anything, in English or Chinese" />
+        <input lang={tl()} value={topic} onInput={(e) => setTopic(e.currentTarget.value)} placeholder={`Anything, in English or ${lang().adjective}`} />
       </label>
       <div class="chips" role="list">
         {TOPICS.map((t) => (
-          <button type="button" key={t} lang="zh-CN" class={`chip-btn ${topic === t ? "on" : ""}`} onClick={() => setTopic(t)}>{t}</button>
+          <button type="button" key={t} lang={tl()} class={`chip-btn ${topic === t ? "on" : ""}`} onClick={() => setTopic(t)}>{t}</button>
         ))}
       </div>
       <div class="form-row">
@@ -72,7 +73,7 @@ export function GenerateForm({ onCancel, onQueued }: { onCancel: () => void; onQ
       </div>
       <label>
         <span>Words to practise <em class="muted">(optional; otherwise your recent and due words)</em></span>
-        <input lang="zh-CN" value={targets} onInput={(e) => setTargets(e.currentTarget.value)} placeholder="银行 医生" />
+        <input lang={tl()} value={targets} onInput={(e) => setTargets(e.currentTarget.value)} placeholder="银行 医生" />
       </label>
       <div class="form-foot">
         <span class="muted">Written at your level, then checked word by word. Takes about a minute in the background.</span>

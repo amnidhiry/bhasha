@@ -4,46 +4,43 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import current_user
+from app.api.deps import current_language, current_user
 from app.api.reviews import ReviewIn, record_reviews
 from app.db import get_db
 from app.examples import for_unit
 from app.learner import known_unit_ids
-from app.models import AppUser, Card, CedictEntry, CharacterInfo, Exposure, Unit, WordFrequency
-from app.packs import get_pack
-from app.packs.zh.pinyin import apply_sandhi, numeric_to_marks
+from app.models import AppUser, Card, Exposure, Unit, WordFrequency
+from app.packs import INSTALLED, get_pack
+from app.packs.base import WORD
 from app.reader import now
 
 router = APIRouter(tags=["lookup"])
 
 
-def _zh_reading(pack, word: str) -> dict:
-    cite = pack.citation(word)
-    surf = apply_sandhi([(word, cite)])[0]
-    return {
-        "citation": " ".join(cite),
-        "citation_display": " ".join(numeric_to_marks(s) for s in cite),
-        "surface_display": " ".join(numeric_to_marks(s) for s in surf),
-    }
-
-
 @router.get("/lookup")
-def lookup(q: str, language: str = "zh", text_id: int | None = None, log: bool = False,
-           db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
-    """Dictionary, readings, HSK levels and character decompositions for a word.
+def lookup(q: str, language: str | None = None, text_id: int | None = None, log: bool = False,
+           db: Session = Depends(get_db), user: AppUser = Depends(current_user),
+           active: str = Depends(current_language)):
+    """Dictionary, readings, levels and the pack's own sections (zh: CC-CEDICT and
+    character decompositions) for a word. An inflected form resolves to its lemma.
 
     With log=true (a tap in the reader), the lookup is recorded as an exposure, and
     if the word already has a meaning card, as an unscheduled failed review."""
-    if language != "zh":
-        raise HTTPException(400, "only the zh pack is installed")
+    language = language or active
+    if language not in INSTALLED:
+        raise HTTPException(400, f"no language pack installed for {language!r}")
     pack = get_pack(language)
-    q = q.strip()
+    q = pack.normalize(q.strip())
     if not q:
         raise HTTPException(400, "empty query")
 
     units = list(db.scalars(select(Unit).where(Unit.language == language, Unit.headword == q).order_by(Unit.id)))
-    cedict = list(db.scalars(select(CedictEntry).where(CedictEntry.simplified == q)))
-    chars = {c.character: c for c in db.scalars(select(CharacterInfo).where(CharacterInfo.character.in_(set(q))))}
+    form = None
+    if not units:
+        toks = [t for t in pack.analyze(q) if t.kind == WORD]
+        if len(toks) == 1 and toks[0].head != q:
+            form, q = q, toks[0].head
+            units = list(db.scalars(select(Unit).where(Unit.language == language, Unit.headword == q).order_by(Unit.id)))
 
     logged = None
     if log and units:
@@ -59,31 +56,20 @@ def lookup(q: str, language: str = "zh", text_id: int | None = None, log: bool =
             logged = "exposure"
 
     primary = next((u for u in units if (u.extra or {}).get("primary_form")), units[0]) if units else None
-    freq = db.get(WordFrequency, q)
+    freq = db.get(WordFrequency, (language, q))
     return {
         "query": q,
+        "form": form,  # the inflected form that was tapped, when it differs from the lemma
+        "language": language,
         "frequency": {"rank": freq.rank, "per_million": freq.per_million} if freq else None,
         "examples": for_unit(db, primary.id, known_unit_ids(db, user.id, language)) if primary else [],
-        "reading": _zh_reading(pack, q),
         "units": [
-            {"id": u.id, "reading": u.reading, "reading_display": " ".join(numeric_to_marks(s) for s in u.reading.split()),
+            {"id": u.id, "reading": u.reading, "reading_display": pack.reading_display(u.reading),
              "traditional": u.traditional, "level_tags": u.level_tags, "frequency_rank": u.frequency_rank,
-             "classifiers": (u.extra or {}).get("classifiers", []), "meanings": (u.extra or {}).get("meanings", []),
+             "classifiers": (u.extra or {}).get("classifiers", []), "meanings": pack.meanings(db, u),
              "pos": (u.extra or {}).get("pos", [])}
             for u in units
         ],
-        "cedict": [
-            {"traditional": e.traditional, "pinyin": e.pinyin,
-             "pinyin_display": " ".join(numeric_to_marks(s) for s in e.pinyin.replace("u:", "v").split()),
-             "glosses": e.glosses}
-            for e in cedict
-        ],
-        "characters": [
-            {"character": ch, "definition": chars[ch].definition, "pinyin": chars[ch].pinyin,
-             "decomposition": chars[ch].decomposition, "radical": chars[ch].radical,
-             "etymology": chars[ch].etymology} if ch in chars else {"character": ch}
-            for ch in pack.sub_units(q)
-        ],
-        "attribution": "CC-CEDICT (CC BY-SA 4.0); Make Me a Hanzi; complete-hsk-vocabulary (MIT); SUBTLEX-CH; Tatoeba (CC BY 2.0 FR)",
         "logged": logged,
+        **pack.lookup_extras(db, q),
     }

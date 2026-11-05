@@ -1,10 +1,11 @@
+import { tl } from "../lang";
 import { useState } from "preact/hooks";
 import { api, ApiError } from "../api";
 
 interface Explained {
   answer: string;
-  chunks: { zh: string; role: string }[];
-  points: { name: string; url: string }[];
+  chunks: { text: string; role: string }[];
+  points: { name: string; url: string | null }[];
 }
 
 /** "Why 了 here?": ask about a sentence, answered at your level. */
@@ -32,10 +33,10 @@ export function ExplainBox({ sentence, focus }: { sentence: string; focus: strin
   }
   return (
     <div class="explain">
-      <p class="explain-sentence" lang="zh-CN">{sentence}</p>
+      <p class="explain-sentence" lang={tl()}>{sentence}</p>
       <div class="chips">
         <button class="chip-btn" disabled={busy} onClick={() => ask("Explain this sentence.")}>Explain the sentence</button>
-        <button class="chip-btn" disabled={busy} onClick={() => ask(`Why is ${focus} used here?`)} lang="zh-CN">Why {focus} here?</button>
+        <button class="chip-btn" disabled={busy} onClick={() => ask(`Why is ${focus} used here?`)} lang={tl()}>Why {focus} here?</button>
       </div>
       <form class="row-input" onSubmit={(e) => { e.preventDefault(); if (q.trim()) void ask(q.trim()); }}>
         <input value={q} onInput={(e) => setQ(e.currentTarget.value)} placeholder="Or ask anything, e.g. 才 vs 就?" disabled={busy} />
@@ -47,14 +48,14 @@ export function ExplainBox({ sentence, focus }: { sentence: string; focus: strin
         <div class="explain-answer">
           {res.chunks.length > 0 && (
             <ol class="chunks">
-              {res.chunks.map((c, i) => <li key={i}><span lang="zh-CN">{c.zh}</span><small>{c.role}</small></li>)}
+              {res.chunks.map((c, i) => <li key={i}><span lang={tl()}>{c.text}</span><small>{c.role}</small></li>)}
             </ol>
           )}
           <p>{res.answer}</p>
           {res.points.length > 0 && (
             <p class="small">
               Grammar Wiki:{" "}
-              {res.points.map((p, i) => <a key={i} href={p.url} target="_blank" rel="noopener" class="wiki-link">{p.name}</a>)}
+              {res.points.map((p, i) => p.url ? <a key={i} href={p.url} target="_blank" rel="noopener" class="wiki-link">{p.name}</a> : <span key={i} class="wiki-link">{p.name}</span>)}
             </p>
           )}
         </div>

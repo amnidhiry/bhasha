@@ -1,0 +1,36 @@
+"""Mandarin tutor scenarios (everyday role-plays from docs/design.md)."""
+
+from app.packs.base import Scenario
+
+SCENARIOS = [
+    Scenario("restaurant", "Ordering food", "点菜", "A small restaurant. You're hungry.", "a friendly waiter",
+             "Order a main dish and a drink, then ask for the bill.",
+             "The first dish they ask for is sold out today; suggest something similar.",
+             ("服务员", "菜单", "没有了", "要", "买单", "好吃", "喝")),
+    Scenario("directions", "Asking the way", "问路", "You're lost near a subway station.", "a helpful passer-by",
+             "Find out how to get to the bank, and how long it takes.",
+             "The bank is a bit far; they suggest taking the subway one stop.",
+             ("在哪儿", "怎么走", "往前走", "左边", "右边", "地铁站", "分钟", "远", "近")),
+    Scenario("shopping", "Buying clothes", "买衣服", "A clothes shop.", "a shop assistant",
+             "Buy a shirt in your size and agree on a price.",
+             "Your size is only left in another colour.",
+             ("多少钱", "太贵了", "便宜", "大", "小", "颜色", "试试", "块")),
+    Scenario("taxi", "Taking a taxi", "坐出租车", "You get into a taxi.", "a taxi driver",
+             "Tell the driver where you're going and pay at the end.",
+             "There's traffic; the driver asks if you mind a slightly longer route.",
+             ("去", "到了", "多少钱", "路", "堵车", "开车")),
+    Scenario("new-friend", "Meeting someone new", "认识新朋友", "A friend's party.", "a friendly guest",
+             "Introduce yourself, and learn their name, job and where they live.",
+             "They ask what you're studying and why you're learning Chinese.",
+             ("你叫什么名字", "认识你很高兴", "工作", "住", "学习", "中文")),
+    Scenario("phone", "Booking on the phone", "打电话预订", "You call a restaurant to book a table.", "a receptionist",
+             "Book a table for a day, time and number of people.",
+             "Your first time is full; they offer half an hour later.",
+             ("喂", "预订", "几位", "几点", "星期", "可以", "满了")),
+    Scenario("doctor", "Seeing a doctor", "看医生", "A clinic. You've felt unwell since yesterday.", "a kind doctor",
+             "Explain what's wrong and since when, and understand what to do.",
+             "The doctor asks about fever and tells you to rest and drink water.",
+             ("哪儿不舒服", "头疼", "发烧", "多长时间", "休息", "喝水", "药")),
+    Scenario("free", "Free chat", "随便聊聊", "An easy conversation about daily life.", "a patient language partner",
+             "Chat for a few turns about your day.", "Ask a follow-up question about something they said.", ()),
+]

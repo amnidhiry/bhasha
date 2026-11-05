@@ -80,11 +80,13 @@ def import_tatoeba(db: Session, cmn: Path, eng: Path, links: Path) -> int:
                                        .where(Unit.language == "zh", Unit.type == "word").order_by(Unit.id)):
         if head not in units or (extra or {}).get("primary_form"):
             units[head] = uid
-    unit_rank = dict(db.execute(select(Unit.headword, Unit.frequency_rank).where(Unit.frequency_rank.is_not(None))).all())
-    freq = dict(db.execute(select(WordFrequency.word, WordFrequency.rank)).all())
+    unit_rank = dict(db.execute(select(Unit.headword, Unit.frequency_rank)
+                                .where(Unit.language == "zh", Unit.frequency_rank.is_not(None))).all())
+    freq = dict(db.execute(select(WordFrequency.word, WordFrequency.rank).where(WordFrequency.language == "zh")).all())
 
-    db.execute(delete(SentenceUnit))
-    db.execute(delete(ExampleSentence))
+    old = select(ExampleSentence.id).where(ExampleSentence.language == "zh")
+    db.execute(delete(SentenceUnit).where(SentenceUnit.sentence_id.in_(old)))
+    db.execute(delete(ExampleSentence).where(ExampleSentence.language == "zh"))
     sentences, links_rows = [], []
     for sid, text in kept.items():
         translations = sorted(i for i in wanted.get(sid, []) if i in english)
@@ -94,7 +96,7 @@ def import_tatoeba(db: Session, cmn: Path, eng: Path, links: Path) -> int:
         if not words:
             continue
         ranks = [freq.get(w) or unit_rank.get(w) or UNKNOWN_RANK for w in words]
-        sentences.append({"id": sid, "source": "tatoeba", "text": text, "translation": english[translations[0]],
+        sentences.append({"id": sid, "language": "zh", "source": "tatoeba", "text": text, "translation": english[translations[0]],
                           "n_words": len(words), "difficulty": max(ranks)})
         for uid in {units[w] for w in words if w in units}:
             links_rows.append({"sentence_id": sid, "unit_id": uid})

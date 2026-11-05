@@ -22,7 +22,7 @@ def test_subtlex_parses_utf8_and_gbk(client, name):
     from app.models import WordFrequency
     with client.session_factory() as s:
         assert import_subtlex(s, FX / name) == 7
-        assert s.get(WordFrequency, "我").rank == 1 and s.get(WordFrequency, "量子").rank == 7
+        assert s.get(WordFrequency, ("zh", "我")).rank == 1 and s.get(WordFrequency, ("zh", "量子")).rank == 7
 
 
 def test_subtlex_fills_missing_ranks_only(client):

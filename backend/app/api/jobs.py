@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import jobs as queue
-from app.api.deps import current_user
+from app.api.deps import current_language, current_user
 from app.api.texts import GenerateIn
 from app.config import get_settings
 from app.llm import gateway
@@ -53,10 +53,10 @@ def _run_inline():
 
 @router.post("/generate", response_model=JobOut, status_code=202)
 def generate(body: GenerateIn, tasks: BackgroundTasks, db: Session = Depends(get_db),
-             user: AppUser = Depends(current_user)):
+             user: AppUser = Depends(current_user), lang: str = Depends(current_language)):
     """Queue a generated text. Poll GET /jobs/{id}; the result holds text_id."""
     _require_model(db)
-    job = queue.enqueue(db, user.id, "generate", body.model_dump())
+    job = queue.enqueue(db, user.id, "generate", {**body.model_dump(), "language": lang})
     if get_settings().inline_jobs:
         tasks.add_task(_run_inline)
     return job

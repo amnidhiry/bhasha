@@ -1,3 +1,4 @@
+import { has, lang, readingAidName, tl } from "../lang";
 import { Fragment } from "preact";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { api, type TextDoc, type Tok } from "../api";
@@ -52,6 +53,7 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
   const [warmup, setWarmup] = useState<{ words: string[]; unknown: number } | null>(null);
   const [warmupQueued, setWarmupQueued] = useState(false);
   const settings = useSettings();
+  const aidLabel = readingAidName() === "pinyin" ? "Pinyin" : "Romanization";
 
   const load = useCallback(() => {
     api.text(id).then(setDoc).catch((e) => setError(e.message));
@@ -81,7 +83,7 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
   async function finish() {
     try {
       const r = await api.finish(id);
-      toast(`Logged ${r.exposures} words · ${r.characters_read} characters read`);
+      toast(`Logged ${r.exposures} words · ${r.read} ${r.read_unit} read`);
       go("#/");
     } catch (e) {
       toast(`Couldn't save: ${(e as Error).message}`);
@@ -125,7 +127,7 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
       <header class="reader-head">
         <a href="#/" class="back" aria-label="Back to library">‹</a>
         <div class="reader-title">
-          <h1 lang="zh-CN">{doc.title}</h1>
+          <h1 lang={tl()}>{doc.title}</h1>
           {meta.title_en && <p class="title-en">{meta.title_en}</p>}
           <p class="muted">
             <span class="cov">{pct(doc.coverage_now)} known</span>
@@ -135,11 +137,11 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
       </header>
 
       <div class="reader-tools" role="toolbar" aria-label="Reading options">
-        <div class="seg" role="radiogroup" aria-label="Pinyin">
+        <div class="seg" role="radiogroup" aria-label={aidLabel}>
           {(["unknown", "all", "none"] as const).map((m) => (
             <button key={m} role="radio" aria-checked={settings.pinyin === m} class={settings.pinyin === m ? "on" : ""}
               onClick={() => setSettings({ pinyin: m })}>
-              {m === "unknown" ? "Pinyin: new" : m === "all" ? "All" : "Off"}
+              {m === "unknown" ? `${aidLabel}: new` : m === "all" ? "All" : "Off"}
             </button>
           ))}
         </div>
@@ -161,13 +163,13 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
 
       {doc.meta?.pre_teach && (
         <p class="warmup small"><a href={`#/read/${doc.meta.pre_teach.id}`}>Read the warm-up first</a>: it uses{" "}
-          <span lang="zh-CN">{doc.meta.pre_teach.words.join("、")}</span>.</p>
+          <span lang={tl()}>{doc.meta.pre_teach.words.join("、")}</span>.</p>
       )}
       {warmup && !doc.meta?.pre_teach && (
         <div class="warmup">
           <p class="small">
             {warmup.unknown} new words here. Warm up first with a short, easy text using the most useful ones:{" "}
-            <span lang="zh-CN">{warmup.words.join("、")}</span>.
+            <span lang={tl()}>{warmup.words.join("、")}</span>.
           </p>
           <button class="btn" disabled={warmupQueued} onClick={() => api.preTeach(id)
             .then(() => { setWarmupQueued(true); toast("Writing your warm-up; it'll appear in the library."); })
@@ -177,7 +179,7 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
         </div>
       )}
 
-      <article class="reading" lang="zh-CN">
+      <article class="reading" lang={tl()}>
         {sentences.map((s, i) => {
           const g = showEn ? translationAfter(s[0].sentence_index) : null;
           return (
@@ -200,7 +202,7 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
                 <a class="src" href={genSentences[g].url} target="_blank" rel="noopener">Tatoeba #{genSentences[g].id}</a>
               ) : (
                 <button class={`flag ${isFlagged(g) ? "on" : ""}`} disabled={isFlagged(g)} onClick={() => flag(g)}
-                  aria-label="Flag this sentence as unnatural Chinese" title="Sounds unnatural">
+                  aria-label={`Flag this sentence as unnatural ${lang().adjective}`} title="Sounds unnatural">
                   {isFlagged(g) ? "flagged" : "⚑"}
                 </button>
               )}
@@ -213,9 +215,9 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
 
       {doc.provenance === "generated" && (
         <p class="gen-note muted small">
-          Generated at HSK {meta.level ?? "?"}. Chinese written by a model; pinyin and glosses from local dictionaries.
+          Generated at {lang().levels.name.replace(/\s*\d+(\.\d+)?$/, "")} {meta.level ?? "?"}. {lang().adjective} written by a model; {readingAidName()} and glosses from local dictionaries.
           {meta.accepted_with_issues && meta.out_of_bounds?.length
-            ? <> Includes words beyond your level: <span lang="zh-CN">{meta.out_of_bounds.join("、")}</span>.</>
+            ? <> Includes words beyond your level: <span lang={tl()}>{meta.out_of_bounds.join("、")}</span>.</>
             : null}
         </p>
       )}
@@ -232,7 +234,7 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
           <ol>
             {meta.questions!.map((q, i) => (
               <li key={i}>
-                <p class="q-zh" lang="zh-CN">{q.question_zh}</p>
+                <p class="q-zh" lang={tl()}>{q.question ?? q.question_zh}</p>
                 <details>
                   <summary>English and answer</summary>
                   <p class="muted">{q.question_en}</p>
@@ -245,7 +247,7 @@ export function Reader({ id, onReviewsChanged }: { id: number; onReviewsChanged:
       )}
 
       {doc.meta?.pre_teach_for && (
-        <p class="warmup small">Warmed up? Now read <a href={`#/read/${doc.meta.pre_teach_for.id}`} lang="zh-CN">{doc.meta.pre_teach_for.title}</a>.</p>
+        <p class="warmup small">Warmed up? Now read <a href={`#/read/${doc.meta.pre_teach_for.id}`} lang={tl()}>{doc.meta.pre_teach_for.title}</a>.</p>
       )}
       <footer class="reader-foot">
         {doc.finished_at ? (

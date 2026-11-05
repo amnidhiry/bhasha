@@ -24,7 +24,8 @@ import trafilatura
 from app.config import get_settings
 from app.importing import ImportProblem
 from app.importing.draft import MAX_BODY, Draft, Part
-from app.importing.textutil import decode, han_count, han_ratio, tidy
+from app.importing.textutil import current, decode, language_adjective, script_count, script_ratio, tidy
+from app.packs import get_pack
 
 # Tests swap this for an httpx.MockTransport.
 transport: httpx.BaseTransport | None = None
@@ -86,7 +87,7 @@ def fetch(url: str) -> tuple[str, bytes, str]:
     """(final URL, body bytes, content type), at most MAX_BYTES."""
     with httpx.Client(timeout=TIMEOUT, transport=transport, follow_redirects=False,
                       headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml,text/plain;q=0.8",
-                               "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.5"}) as c:
+                               "Accept-Language": get_pack(current()).accept_language}) as c:
         for _ in range(MAX_REDIRECTS + 1):
             check_url(url)
             try:
@@ -120,7 +121,7 @@ def extract(html: bytes, url: str) -> tuple[str, str]:
     doc = trafilatura.bare_extraction(html, url=url, with_metadata=True, include_comments=False,
                                       include_tables=False, favor_precision=True)
     text = tidy(doc.text or "") if doc is not None else ""
-    if han_count(text) < 20:
+    if script_count(text) < 20:
         # Precision mode can drop short pages entirely; try the default balance.
         doc = trafilatura.bare_extraction(html, url=url, with_metadata=True, include_comments=False)
         text = tidy(doc.text or "") if doc is not None else ""
@@ -142,13 +143,13 @@ def draft_from_url(url: str) -> Draft:
         raise ImportProblem(f"That link is {ctype}, not a web page.")
     else:
         title, text = extract(data, final_url)
-    if han_count(text) == 0:
-        raise ImportProblem("Couldn't find any Chinese text on that page.")
+    if script_count(text) == 0:
+        raise ImportProblem(f"Couldn't find any {language_adjective()} text on that page.")
     if len(text) > MAX_BODY:
         text = text[:MAX_BODY].rsplit("\n", 1)[0]
     warnings = []
     lines = [ln for ln in text.split("\n") if ln.strip()]
-    if lines and sum(han_ratio(ln) >= 0.5 for ln in lines) < len(lines) / 2:
-        warnings.append("Much of this page isn't Chinese.")
+    if lines and sum(script_ratio(ln) >= 0.5 for ln in lines) < len(lines) / 2:
+        warnings.append(f"Much of this page isn't {language_adjective()}.")
     title = title or urlsplit(final_url).hostname or "Web page"
     return Draft(kind="url", title=title[:256], parts=[Part(title[:256], text)], source_url=final_url[:1024])

@@ -5,8 +5,8 @@ from app.llm.providers import FakeProvider
 def test_explain_returns_answer_chunks_and_wiki_links(client, monkeypatch):
     fake = FakeProvider(replies=[{
         "answer": "了 shows the visit is finished.",
-        "chunks": [{"zh": "我", "role": "subject: I"}, {"zh": "昨天", "role": "time: yesterday"},
-                   {"zh": "去了", "role": "verb + 了: went"}, {"zh": "朋友家。", "role": "place: friend's home"}],
+        "chunks": [{"text": "我", "role": "subject: I"}, {"text": "昨天", "role": "time: yesterday"},
+                   {"text": "去了", "role": "verb + 了: went"}, {"text": "朋友家。", "role": "place: friend's home"}],
         "points": [{"name": "了 for completed actions", "search": "了 completed action"}]}])
     monkeypatch.setattr(gateway, "override", fake)
     r = client.post("/api/explain", json={"sentence": "我昨天去了朋友家。", "question": "Why 了 here?", "focus": "了"}).json()
@@ -17,7 +17,7 @@ def test_explain_returns_answer_chunks_and_wiki_links(client, monkeypatch):
 
 def test_chunks_that_dont_rebuild_the_sentence_are_dropped(client, monkeypatch):
     monkeypatch.setattr(gateway, "override", FakeProvider(replies=[{
-        "answer": "x", "chunks": [{"zh": "我们", "role": "?"}], "points": []}]))
+        "answer": "x", "chunks": [{"text": "我们", "role": "?"}], "points": []}]))
     assert client.post("/api/explain", json={"sentence": "我昨天去了朋友家。"}).json()["chunks"] == []
 
 

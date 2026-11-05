@@ -18,10 +18,11 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import current_user
+from app.api.deps import current_language, current_user
 from app.db import get_db
 from app.importing import ImportProblem, epub, jellyfin, subtitles, web
 from app.importing.draft import MAX_BODY, preview
+from app.importing.textutil import importing_language
 from app.jobs import enqueue_render
 from app.models import AppUser
 from app.packs import INSTALLED
@@ -66,69 +67,76 @@ class UrlIn(BaseModel):
 
 
 @router.post("/url/preview")
-def url_preview(body: UrlIn, db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
-    try:
-        draft = web.draft_from_url(body.url)
-    except ImportProblem as e:
-        raise _problem(e)
-    return preview(db, user.id, draft)
+def url_preview(body: UrlIn, db: Session = Depends(get_db), user: AppUser = Depends(current_user), lang: str = Depends(current_language)):
+    with importing_language(lang):
+        try:
+            draft = web.draft_from_url(body.url)
+        except ImportProblem as e:
+            raise _problem(e)
+        return preview(db, user.id, draft)
 
 
 @router.post("/epub/chapters")
-async def epub_chapters(file: UploadFile = File(...)):
+async def epub_chapters(file: UploadFile = File(...), lang: str = Depends(current_language)):
     data = await _upload(file, epub.MAX_UPLOAD, "book")
-    try:
-        return epub.chapter_list(epub.read_book(data))
-    except ImportProblem as e:
-        raise _problem(e)
+    with importing_language(lang):
+        try:
+            return epub.chapter_list(epub.read_book(data))
+        except ImportProblem as e:
+            raise _problem(e)
 
 
 @router.post("/epub/preview")
 async def epub_preview(file: UploadFile = File(...), start: int = Form(0), end: int | None = Form(None),
-                       db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
+                       db: Session = Depends(get_db), user: AppUser = Depends(current_user), lang: str = Depends(current_language)):
     data = await _upload(file, epub.MAX_UPLOAD, "book")
-    try:
-        draft = epub.draft_from_book(epub.read_book(data), start, end)
-    except ImportProblem as e:
-        raise _problem(e)
-    return preview(db, user.id, draft)
+    with importing_language(lang):
+        try:
+            draft = epub.draft_from_book(epub.read_book(data), start, end)
+        except ImportProblem as e:
+            raise _problem(e)
+        return preview(db, user.id, draft)
 
 
 @router.post("/subtitles/preview")
 async def subtitles_preview(file: UploadFile = File(...), title: str = Form(""),
-                            db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
+                            db: Session = Depends(get_db), user: AppUser = Depends(current_user), lang: str = Depends(current_language)):
     data = await _upload(file, subtitles.MAX_UPLOAD, "subtitle file")
-    try:
-        draft = subtitles.draft_from_subtitles(data, title or _stem(file.filename))
-    except ImportProblem as e:
-        raise _problem(e)
-    return preview(db, user.id, draft)
+    with importing_language(lang):
+        try:
+            draft = subtitles.draft_from_subtitles(data, title or _stem(file.filename))
+        except ImportProblem as e:
+            raise _problem(e)
+        return preview(db, user.id, draft)
 
 
 @router.get("/jellyfin/search")
-def jellyfin_search(q: str):
+def jellyfin_search(q: str, lang: str = Depends(current_language)):
     if not q.strip():
         return []
-    try:
-        return jellyfin.search(q.strip())
-    except ImportProblem as e:
-        raise _problem(e)
+    with importing_language(lang):
+        try:
+            return jellyfin.search(q.strip())
+        except ImportProblem as e:
+            raise _problem(e)
 
 
 @router.get("/jellyfin/series/{series_id}/episodes")
-def jellyfin_episodes(series_id: str):
-    try:
-        return jellyfin.episodes(series_id)
-    except ImportProblem as e:
-        raise _problem(e)
+def jellyfin_episodes(series_id: str, lang: str = Depends(current_language)):
+    with importing_language(lang):
+        try:
+            return jellyfin.episodes(series_id)
+        except ImportProblem as e:
+            raise _problem(e)
 
 
 @router.get("/jellyfin/items/{item_id}/subtitles")
-def jellyfin_subtitles(item_id: str):
-    try:
-        return jellyfin.subtitles(item_id)
-    except ImportProblem as e:
-        raise _problem(e)
+def jellyfin_subtitles(item_id: str, lang: str = Depends(current_language)):
+    with importing_language(lang):
+        try:
+            return jellyfin.subtitles(item_id)
+        except ImportProblem as e:
+            raise _problem(e)
 
 
 class JellyfinIn(BaseModel):
@@ -139,12 +147,13 @@ class JellyfinIn(BaseModel):
 
 
 @router.post("/jellyfin/preview")
-def jellyfin_preview(body: JellyfinIn, db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
-    try:
-        draft = jellyfin.draft_from_jellyfin(body.item_id, body.index, body.media_source_id, body.title)
-    except ImportProblem as e:
-        raise _problem(e)
-    return preview(db, user.id, draft)
+def jellyfin_preview(body: JellyfinIn, db: Session = Depends(get_db), user: AppUser = Depends(current_user), lang: str = Depends(current_language)):
+    with importing_language(lang):
+        try:
+            draft = jellyfin.draft_from_jellyfin(body.item_id, body.index, body.media_source_id, body.title)
+        except ImportProblem as e:
+            raise _problem(e)
+        return preview(db, user.id, draft)
 
 
 class PartIn(BaseModel):
@@ -157,18 +166,19 @@ class SaveIn(BaseModel):
     parts: list[PartIn] = Field(min_length=1, max_length=100)
     source_url: str | None = Field(default=None, max_length=1024)
     meta: dict = Field(default_factory=dict)
-    language: str = "zh"
+    language: str | None = None  # the active language when omitted
 
 
 @router.post("/texts")
-def save_texts(body: SaveIn, db: Session = Depends(get_db), user: AppUser = Depends(current_user)):
+def save_texts(body: SaveIn, db: Session = Depends(get_db), user: AppUser = Depends(current_user), lang: str = Depends(current_language)):
     """Save previewed parts as texts (provenance "imported"); a multi-part import
     links its parts through meta.import.group (the first part's id)."""
-    if body.language not in INSTALLED:
-        raise HTTPException(400, f"no language pack for {body.language!r}")
+    language = body.language or lang
+    if language not in INSTALLED:
+        raise HTTPException(400, f"no language pack for {language!r}")
     out, group = [], None
     for i, p in enumerate(body.parts, 1):
-        text = create_text(db, user.id, body.language, p.title, p.body, "imported", body.source_url)
+        text = create_text(db, user.id, language, p.title, p.body, "imported", body.source_url)
         group = group or text.id
         text.meta = {**(text.meta or {}), "import": {
             **{k: v for k, v in body.meta.items() if k not in ("group", "part", "of")},

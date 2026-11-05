@@ -7,7 +7,7 @@ NO_LEARNER = {"original": "", "corrected": "", "english": "", "errors": []}
 
 
 def turn(reply_zh, reply_en="", learner=None, goal=False, hint="Say what you'd like to drink."):
-    return {"learner": learner or NO_LEARNER, "reply": {"zh": reply_zh, "en": reply_en}, "goal_met": goal, "hint": hint}
+    return {"learner": learner or NO_LEARNER, "reply": {"text": reply_zh, "en": reply_en}, "goal_met": goal, "hint": hint}
 
 
 @pytest.fixture()

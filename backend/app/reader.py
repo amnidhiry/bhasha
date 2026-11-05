@@ -19,7 +19,8 @@ def resolve_units(db: Session, language: str, tokens: list[Token], create: bool 
     pack's context-aware reading. Unseen words get a unit so they can be mined
     (with create=False they map to None instead: import previews write nothing)."""
     pack = get_pack(language)
-    words = {t.surface for t in tokens if t.kind == WORD}
+    keys = [pack.unit_key(t) if t.kind == WORD else None for t in tokens]
+    words = {k[1] for k in keys if k}
     by_head: dict[str, list[Unit]] = {}
     if words:
         for u in db.scalars(
@@ -28,12 +29,12 @@ def resolve_units(db: Session, language: str, tokens: list[Token], create: bool 
             by_head.setdefault(u.headword, []).append(u)
 
     out: list[int | None] = []
-    for t in tokens:
-        if t.kind != WORD:
+    for t, key in zip(tokens, keys):
+        if key is None:
             out.append(None)
             continue
-        reading = " ".join(s.citation for s in t.syllables) or pack.reading(t.surface)
-        cands = by_head.get(t.surface, [])
+        _, head, reading = key
+        cands = by_head.get(head, [])
         unit = next((u for u in cands if u.reading == reading), None)
         if unit is None:
             unit = next((u for u in cands if (u.extra or {}).get("primary_form")), None) or (cands[0] if cands else None)
@@ -41,11 +42,11 @@ def resolve_units(db: Session, language: str, tokens: list[Token], create: bool 
             out.append(None)
             continue
         if unit is None:
-            unit = Unit(language=language, type="word", headword=t.surface, reading=reading,
+            unit = Unit(language=language, type="word", headword=head, reading=reading,
                         extra={"source": "segmenter"})
             db.add(unit)
             db.flush()
-            by_head[t.surface] = [unit]
+            by_head[head] = [unit]
         out.append(unit.id)
     return out
 
@@ -77,6 +78,19 @@ def unit_statuses(db: Session, user_id: int, language: str, unit_ids: set[int]) 
     return out
 
 
+def token_dict(t: Token, unit_id: int | None, status: str | None) -> dict:
+    """A token as the PWA renders it: reading aid per part, plus lemma and morphology
+    for inflecting languages (bn: করছি -> lemma করা, morph -ছি)."""
+    d = {"surface": t.surface, "kind": t.kind, "unit_id": unit_id, "status": status,
+         "show_reading": t.kind == "proper" or status in (NEW, LEARNING),
+         "syllables": [s.__dict__ for s in t.syllables]}
+    if t.lemma:
+        d["lemma"] = t.lemma
+    if t.morph:
+        d["morph"] = [m.__dict__ for m in t.morph]
+    return d
+
+
 def serialize_text(db: Session, user_id: int, text: Text) -> dict:
     """Tokens with status and reading aids. Pinyin is recomputed (cheap) rather
     than stored, so sandhi or reading fixes apply to old texts too."""
@@ -89,17 +103,10 @@ def serialize_text(db: Session, user_id: int, text: Text) -> dict:
     tokens = []
     for i, tok in enumerate(text.tokens):
         status = statuses.get(tok.unit_id) if tok.unit_id else None
-        syllables = analyzed[i].syllables if surfaces_match else []
-        tokens.append({
-            "position": tok.position,
-            "sentence_index": tok.sentence_index,
-            "surface": tok.surface,
-            "kind": tok.kind,
-            "unit_id": tok.unit_id,
-            "status": status,
-            "show_reading": status in (NEW, LEARNING),
-            "syllables": [s.__dict__ for s in syllables],
-        })
+        a = analyzed[i] if surfaces_match else Token(surface=tok.surface, kind=tok.kind, sentence_index=tok.sentence_index)
+        d = token_dict(a, tok.unit_id, status)
+        d["show_reading"] = status in (NEW, LEARNING)
+        tokens.append({"position": tok.position, "sentence_index": tok.sentence_index, **d})
     return {
         "id": text.id,
         "title": text.title,
@@ -119,8 +126,8 @@ def sentence_map(sentences: list[str], language: str = "zh") -> list[int]:
     sentence it came from, so translations line up under the right text."""
     pack = get_pack(language)
     out: list[int] = []
-    for i, zh in enumerate(sentences):
-        toks = pack.analyze(zh)
+    for i, sentence in enumerate(sentences):
+        toks = pack.analyze(sentence)
         out += [i] * (max((t.sentence_index for t in toks), default=0) + 1)
     return out
 

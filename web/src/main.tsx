@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "preact/hooks";
 import { api } from "./api";
 import { TabBar } from "./components/TabBar";
 import { ToastHost } from "./components/Toast";
+import { adopt } from "./lang";
 import { flush } from "./outbox";
 import { useRoute } from "./router";
 import { Library } from "./views/Library";
@@ -42,6 +43,12 @@ function App() {
 }
 
 render(<App />, document.getElementById("app")!);
+
+// The language being studied comes from the server; a change (made on another
+// device) re-renders everything in the new language.
+api.me().then((me) => {
+  if (adopt(me.language)) location.reload();
+}).catch(() => {});
 
 // Service workers need a secure context (HTTPS, or localhost).
 if ("serviceWorker" in navigator && window.isSecureContext && import.meta.env.PROD) {

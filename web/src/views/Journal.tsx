@@ -1,3 +1,4 @@
+import { lang, tl } from "../lang";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { api, ApiError, type JournalEntry } from "../api";
 import { toast } from "../components/Toast";
@@ -7,7 +8,7 @@ import { canSpeak, speak } from "../speech";
 
 function Diff({ a, b }: { a: string; b: string }) {
   return (
-    <p class="jr-diff" lang="zh-CN">
+    <p class="jr-diff" lang={tl()}>
       {diff(a, b).map((s, i) => <span key={i} class={`d-${s.kind}`}>{s.text}</span>)}
     </p>
   );
@@ -19,7 +20,7 @@ function Entry({ e, onRetry }: { e: JournalEntry; onRetry: () => void }) {
     return (
       <li class="card jr-entry">
         <p class="muted small">{date}</p>
-        <p class="jr-text" lang="zh-CN">{e.text}</p>
+        <p class="jr-text" lang={tl()}>{e.text}</p>
         {e.status === "queued" ? (
           <p class="muted small"><span class="spinner inline" aria-hidden="true" /> Correcting…</p>
         ) : (
@@ -33,7 +34,7 @@ function Entry({ e, onRetry }: { e: JournalEntry; onRetry: () => void }) {
       <p class="muted small">{date} · {e.errors.length ? `${e.errors.length} to fix` : "no mistakes"}</p>
       {e.sentences.map((s, i) => (
         <div key={i} class="jr-sentence">
-          {s.original === s.corrected ? <p class="jr-ok" lang="zh-CN">{s.corrected} <span class="ok small">✓</span></p> : <Diff a={s.original} b={s.corrected} />}
+          {s.original === s.corrected ? <p class="jr-ok" lang={tl()}>{s.corrected} <span class="ok small">✓</span></p> : <Diff a={s.original} b={s.corrected} />}
           <p class="muted small">
             {s.english}
             {canSpeak() && <button class="link-btn inline" onClick={() => speak(s.corrected)}>▶</button>}
@@ -41,7 +42,7 @@ function Entry({ e, onRetry }: { e: JournalEntry; onRetry: () => void }) {
           {e.errors.filter((x) => x.sentence_index === i).map((x) => (
             <p key={x.id} class="jr-error small">
               <span class="chip chip-quiet">{x.label}</span>{" "}
-              <span lang="zh-CN">{x.wrong ? <s>{x.wrong}</s> : <i>(missing)</i>} → <b>{x.right || <i>(remove)</i>}</b></span>{" "}
+              <span lang={tl()}>{x.wrong ? <s>{x.wrong}</s> : <i>(missing)</i>} → <b>{x.right || <i>(remove)</i>}</b></span>{" "}
               {x.explanation}
               {x.card_id && <span class="muted"> · card added</span>}
             </p>
@@ -116,7 +117,7 @@ export function Journal() {
               <p class="small">
                 <b>Try using:</b>{" "}
                 {prompt.words.map((w) => (
-                  <button type="button" key={w} lang="zh-CN" class={`chip-btn ${text.includes(w) ? "on" : ""}`}
+                  <button type="button" key={w} lang={tl()} class={`chip-btn ${text.includes(w) ? "on" : ""}`}
                     onClick={() => setText((t) => t + w)}>{w}</button>
                 ))}
               </p>
@@ -124,8 +125,8 @@ export function Journal() {
           </div>
         )}
         <label>
-          <span>A few sentences in Chinese</span>
-          <textarea lang="zh-CN" rows={5} value={text} onInput={(e) => setText(e.currentTarget.value)}
+          <span>A few sentences in {lang().adjective}</span>
+          <textarea lang={tl()} rows={5} value={text} onInput={(e) => setText(e.currentTarget.value)}
             placeholder="今天我……" />
         </label>
         <div class="form-foot">

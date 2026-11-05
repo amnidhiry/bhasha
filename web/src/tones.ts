@@ -11,9 +11,3 @@ export function syllablePairs(numeric: string, display: string): { tone: number;
   return d.map((text, i) => ({ text, tone: toneOf(n[i] ?? "") }));
 }
 
-export function levelLabel(tags: string[], version = "hsk3-2025"): string | null {
-  const tag = tags.find((t) => t.startsWith(`${version}:`));
-  if (!tag) return null;
-  const n = tag.split(":")[1];
-  return n === "7" ? "HSK 7–9" : `HSK ${n}`;
-}

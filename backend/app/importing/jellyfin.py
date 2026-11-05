@@ -16,12 +16,12 @@ from app.config import get_settings
 from app.importing import ImportProblem
 from app.importing.draft import Draft
 from app.importing.subtitles import MAX_UPLOAD, draft_from_subtitles
+from app.importing.textutil import current
+from app.packs import get_pack
 
 # Tests swap this for an httpx.MockTransport.
 transport: httpx.BaseTransport | None = None
 
-CHINESE_CODES = {"zh", "chi", "zho", "cmn", "zh-cn", "zh-hans", "zh-tw", "zh-hant", "zh-hk", "yue"}
-_CHINESE_WORDS = ("chinese", "中文", "简体", "繁體", "繁体", "mandarin", "chs", "cht")
 _FIELDS = "MediaSources,MediaStreams,ProductionYear"
 
 
@@ -74,12 +74,15 @@ def _label(item: dict) -> str:
     return name
 
 
-def _is_chinese(stream: dict) -> bool:
+def _is_target(stream: dict) -> bool:
+    """Is this subtitle track in the language being imported? (Codes and title words
+    come from the pack: zh matches chi, zho, zh-Hans… and titles saying 中文.)"""
+    pack = get_pack(current())
     lang = (stream.get("Language") or "").lower()
-    if lang in CHINESE_CODES or lang.startswith("zh"):
+    if lang in pack.subtitle_codes or (lang.split("-")[0] == pack.code):
         return True
     text = f"{stream.get('DisplayTitle') or ''} {stream.get('Title') or ''}".lower()
-    return any(w in text for w in _CHINESE_WORDS)
+    return any(w in text for w in pack.subtitle_words)
 
 
 def _subtitle_streams(item: dict) -> list[dict]:
@@ -99,11 +102,11 @@ def _subtitle_streams(item: dict) -> list[dict]:
                 "codec": s.get("Codec"),
                 "external": bool(s.get("IsExternal")),
                 "default": bool(s.get("IsDefault")),
-                "chinese": _is_chinese(s),
+                "target": _is_target(s),
                 "text": bool(text_based),
             })
-    # Chinese first, then the default track, then file order.
-    out.sort(key=lambda s: (not s["chinese"], not s["default"], s["index"] if s["index"] is not None else 999))
+    # The target language first, then the default track, then file order.
+    out.sort(key=lambda s: (not s["target"], not s["default"], s["index"] if s["index"] is not None else 999))
     return out
 
 
@@ -111,7 +114,7 @@ def _summary(item: dict) -> dict:
     d = {"id": item.get("Id"), "name": _label(item), "type": item.get("Type")}
     if item.get("Type") != "Series":
         subs = _subtitle_streams(item) if (item.get("MediaSources") or item.get("MediaStreams")) else None
-        d["chinese_subtitles"] = None if subs is None else sum(1 for s in subs if s["chinese"] and s["text"])
+        d["target_subtitles"] = None if subs is None else sum(1 for s in subs if s["target"] and s["text"])
     return d
 
 

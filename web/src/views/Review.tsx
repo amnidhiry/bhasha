@@ -1,3 +1,4 @@
+import { has, tl } from "../lang";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { api, type DueCard, type Example } from "../api";
 import { PlayIcon } from "../components/LookupSheet";
@@ -40,9 +41,9 @@ const FACET_PROMPT: Record<string, string> = {
 /** The corrected sentence with the answer blanked (or filled in, once revealed). */
 function Cloze({ sentence, answer, revealed }: { sentence: string; answer: string; revealed: boolean }) {
   const i = sentence.indexOf(answer);
-  if (i < 0) return <p class="rv-cloze" lang="zh-CN">{sentence}</p>;
+  if (i < 0) return <p class="rv-cloze" lang={tl()}>{sentence}</p>;
   return (
-    <p class="rv-cloze" lang="zh-CN">
+    <p class="rv-cloze" lang={tl()}>
       {sentence.slice(0, i)}
       <span class={revealed ? "filled" : "blank"}>{revealed ? answer : "\u00a0".repeat(Math.max(2, answer.length * 2))}</span>
       {sentence.slice(i + answer.length)}
@@ -59,7 +60,7 @@ export function suggestRating(mistakes: number, helped: boolean): 1 | 2 | 3 {
 const MODE_KEY = "bhasha.reviewMode";
 const initialMode = (): Mode => {
   try {
-    return localStorage.getItem(MODE_KEY) === "writing" ? "writing" : "words";
+    return has("handwriting") && localStorage.getItem(MODE_KEY) === "writing" ? "writing" : "words";
   } catch {
     return "words";
   }
@@ -70,9 +71,9 @@ const masked = (context: string | null, ch: string) => (context && context.inclu
 
 function Sentence({ text, word }: { text: string; word: string }) {
   const i = text.indexOf(word);
-  if (i < 0) return <p class="rv-sentence" lang="zh-CN">{text}</p>;
+  if (i < 0) return <p class="rv-sentence" lang={tl()}>{text}</p>;
   return (
-    <p class="rv-sentence" lang="zh-CN">
+    <p class="rv-sentence" lang={tl()}>
       {text.slice(0, i)}<mark>{word}</mark>{text.slice(i + word.length)}
     </p>
   );
@@ -217,7 +218,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
     return () => removeEventListener("keydown", onKey);
   });
 
-  const modeSwitch = (
+  const modeSwitch = has("handwriting") && (
     <div class="seg mode-switch" role="tablist" aria-label="Session">
       <button role="tab" aria-selected={mode === "words"} class={mode === "words" ? "on" : ""} onClick={() => mode !== "words" && setMode("words")}>Words</button>
       <button role="tab" aria-selected={mode === "writing"} class={mode === "writing" ? "on" : ""} onClick={() => mode !== "writing" && setMode("writing")}>Writing</button>
@@ -253,7 +254,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
       <main class="page">
         <header class="page-head"><h1>Review</h1>{modeSwitch}</header>
         <section class="empty card">
-          <p class="empty-glyph" lang="zh-CN" aria-hidden="true">{doneCount ? "好" : "空"}</p>
+          <p class="empty-glyph" lang={tl()} aria-hidden="true">{doneCount ? "好" : "空"}</p>
           <h2>{doneCount ? `${doneCount} reviewed. Nothing else is due.` : "Nothing due"}</h2>
           <p class="muted">
             {doneCount
@@ -301,7 +302,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
         <div class="rv-cue">
           <Pinyin numeric={card.reading} display={card.reading_display} />
           <span class="rv-cue-meaning">{card.meanings.slice(0, 2).join("; ")}</span>
-          {cue && <span class="rv-cue-word" lang="zh-CN">{cue}</span>}
+          {cue && <span class="rv-cue-word" lang={tl()}>{cue}</span>}
         </div>
         <WritingPad ref={pad} char={card.headword} onDone={(m) => {
           setMistakes(m);
@@ -328,7 +329,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
         {revealed ? (
           <div class="rv-answer">
             <p>
-              {cloze.wrong ? <>You wrote <s lang="zh-CN">{cloze.wrong}</s>. </> : <>You left this out. </>}
+              {cloze.wrong ? <>You wrote <s lang={tl()}>{cloze.wrong}</s>. </> : <>You left this out. </>}
               {cloze.explanation}
             </p>
             {canSpeak() && (
@@ -351,7 +352,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
             <PlayIcon />
           </button>
         ) : (
-          <div class="rv-word" lang="zh-CN">{card.headword}</div>
+          <div class="rv-word" lang={tl()}>{card.headword}</div>
         )}
 
         {!listening && card.context_sentence && (
@@ -371,7 +372,7 @@ export function Review({ onCount }: { onCount: (n: number) => void }) {
             <ul class="rv-meanings">
               {card.meanings.slice(0, 4).map((m, i) => <li key={i}>{m}</li>)}
             </ul>
-            {card.classifiers.length > 0 && <p class="muted" lang="zh-CN">MW {card.classifiers.join(" · ")}</p>}
+            {card.classifiers.length > 0 && <p class="muted" lang={tl()}>MW {card.classifiers.join(" · ")}</p>}
             {listening && card.context_sentence && <Sentence text={card.context_sentence} word={card.headword} />}
             {card.leech && !showHelp && (
               <button class="btn wide" onClick={(e) => { e.stopPropagation(); setShowHelp(true); }}>

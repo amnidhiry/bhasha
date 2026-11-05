@@ -211,7 +211,7 @@ def _cache_key(db: Session) -> tuple:
         .group_by(PackVersion.component).order_by(PackVersion.component)
     ).all())
     count = db.scalar(select(func.count()).select_from(CharacterInfo)) or 0
-    freq_count = db.scalar(select(func.count()).select_from(WordFrequency)) or 0
+    freq_count = db.scalar(select(func.count()).select_from(WordFrequency).where(WordFrequency.language == "zh")) or 0
     return (str(db.get_bind().url), count, freq_count, versions)
 
 
@@ -234,7 +234,7 @@ def _char_frequency(db: Session) -> dict[str, tuple[int, float]]:
     """Character frequency from SUBTLEX-CH word frequencies: a character's count is
     the sum over every word it appears in (so 银 gets credit for 银行)."""
     per_million: dict[str, float] = defaultdict(float)
-    for word, pm in db.execute(select(WordFrequency.word, WordFrequency.per_million)):
+    for word, pm in db.execute(select(WordFrequency.word, WordFrequency.per_million).where(WordFrequency.language == "zh")):
         for ch in set(word):
             if "㐀" <= ch <= "鿿" or "\U00020000" <= ch <= "\U0002ffff":
                 per_million[ch] += pm

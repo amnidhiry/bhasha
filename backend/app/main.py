@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api import bootcamp, characters, fsrs, journal, speech, tutor, sentences, handwriting, jobs, llm, lookup, mine, progress, reviews, texts
 from app.api import importing
-from app.api import cards, explain, preteach
+from app.api import cards, explain, me, preteach
 from app.bootstrap import ensure_defaults, warm_packs
 from app.config import get_settings
 from app.db import SessionLocal
@@ -29,6 +29,7 @@ app.include_router(importing.router, prefix="/api")
 app.include_router(cards.router, prefix="/api")
 app.include_router(explain.router, prefix="/api")
 app.include_router(preteach.router, prefix="/api")
+app.include_router(me.router, prefix="/api")
 
 
 @app.get("/health")

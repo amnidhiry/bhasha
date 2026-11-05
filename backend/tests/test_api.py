@@ -25,7 +25,7 @@ def test_placement_mark_changes_coverage(client):
     # 我 在 工作 朋友 known (HSK 1 fixture); 银行 是 医生 not.
     assert abs(t["coverage_at_creation"] - 4 / 7) < 1e-9
     p = client.get("/api/progress").json()
-    assert p["hsk_cumulative"][0] == {"level": "1", "words": 4, "known": 4, "coverage": 1.0}
+    assert p["level_cumulative"][0] == {"level": "1", "label": "1", "words": 4, "known": 4, "coverage": 1.0}
     assert p["known_characters"] == len(set("我在工作朋友"))
 
 

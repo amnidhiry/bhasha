@@ -1,3 +1,4 @@
+import { lang, tl } from "../lang";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { api, ApiError, type TutorScenario, type TutorSession, type TutorTurn, type Tok } from "../api";
 import { LookupSheet, PlayIcon, type LookupTarget } from "../components/LookupSheet";
@@ -11,7 +12,7 @@ const AUTOPLAY_KEY = "bhasha.tutor.autoplay";
 
 function TokenText({ tokens, onTap }: { tokens: Tok[]; onTap: (t: Tok) => void }) {
   return (
-    <span lang="zh-CN">
+    <span lang={tl()}>
       {tokens.map((t, i) =>
         t.kind === "word" || t.kind === "proper" ? (
           <button key={i} class={`tok s-${t.kind === "proper" ? "proper" : t.status ?? "new"}`} onClick={() => onTap(t)}>
@@ -33,8 +34,8 @@ function Bubble({ t, last, onTap }: { t: TutorTurn; last: boolean; onTap: (tok: 
     return (
       <li class="bubble mine">
         {changed ? (
-          <p class="jr-diff" lang="zh-CN">{diff(t.text, t.corrected!).map((s, i) => <span key={i} class={`d-${s.kind}`}>{s.text}</span>)}</p>
-        ) : <p lang="zh-CN">{t.text} <span class="ok small">✓</span></p>}
+          <p class="jr-diff" lang={tl()}>{diff(t.text, t.corrected!).map((s, i) => <span key={i} class={`d-${s.kind}`}>{s.text}</span>)}</p>
+        ) : <p lang={tl()}>{t.text} <span class="ok small">✓</span></p>}
         {t.errors?.map((e, i) => (
           <p key={i} class="small bubble-note">
             <span class="chip chip-quiet">{e.label}</span> {e.explanation}{e.card_id ? " · card added" : ""}
@@ -99,7 +100,7 @@ function Chat({ id }: { id: number }) {
       <header class="talk-head">
         <a href="#/talk" class="back" aria-label="Back to scenarios">‹</a>
         <div>
-          <h1>{s.scenario.title} <span class="muted" lang="zh-CN">{s.scenario.title_zh}</span></h1>
+          <h1>{s.scenario.title} <span class="muted" lang={tl()}>{s.scenario.title_native}</span></h1>
           <p class="small muted"><b>Goal:</b> {s.scenario.goal}</p>
         </div>
       </header>
@@ -115,7 +116,7 @@ function Chat({ id }: { id: number }) {
       <div ref={end} />
       {s.status === "active" ? (
         <form class="chat-input" onSubmit={send}>
-          <input lang="zh-CN" value={text} onInput={(e) => setText(e.currentTarget.value)} placeholder="用中文回答…"
+          <input lang={tl()} value={text} onInput={(e) => setText(e.currentTarget.value)} placeholder={lang().code === "zh" ? "用中文回答…" : `Reply in ${lang().adjective}…`}
             disabled={busy} autocomplete="off" />
           <button class="btn primary" disabled={busy || !text.trim()}>Send</button>
           <button type="button" class="btn quiet" disabled={busy}
@@ -172,7 +173,7 @@ function Scenarios() {
   return (
     <main class="page">
       <header class="page-head"><h1>Write</h1><WriteModes active="talk" /></header>
-      <p class="muted">Role-play in Chinese with a tutor who sticks to words you know. Your mistakes are corrected as you go and become review cards.</p>
+      <p class="muted">Role-play in {lang().adjective} with a tutor who sticks to words you know. Your mistakes are corrected as you go and become review cards.</p>
       {active.length > 0 && (
         <section class="card">
           <h2>Continue</h2>
@@ -187,7 +188,7 @@ function Scenarios() {
         {list?.map((sc) => (
           <li key={sc.id} class="card scenario">
             <div>
-              <h2>{sc.title} <span class="muted" lang="zh-CN">{sc.title_zh}</span>{(sc.completed ?? 0) > 0 && <span class="chip status-known">done ×{sc.completed}</span>}</h2>
+              <h2>{sc.title} <span class="muted" lang={tl()}>{sc.title_native}</span>{(sc.completed ?? 0) > 0 && <span class="chip status-known">done ×{sc.completed}</span>}</h2>
               <p class="small muted">{sc.setting} You talk with {sc.role}.</p>
               <p class="small"><b>Goal:</b> {sc.goal}</p>
             </div>

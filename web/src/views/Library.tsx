@@ -1,3 +1,4 @@
+import { isPinyin, lang, tl } from "../lang";
 import { useEffect, useState } from "preact/hooks";
 import { api, type TextSummary } from "../api";
 import { go } from "../router";
@@ -7,10 +8,6 @@ import { JobList } from "../components/JobList";
 import { toast } from "../components/Toast";
 import { pct } from "../format";
 
-const STARTER = {
-  title: "我的家 · My family",
-  body: "我叫小明。我是学生。我家有四口人：爸爸、妈妈、姐姐和我。爸爸是医生，妈妈是老师。姐姐在北京工作。我很喜欢我的家。",
-};
 
 export function Library() {
   const [texts, setTexts] = useState<TextSummary[] | null>(null);
@@ -76,15 +73,17 @@ export function Library() {
       {error && <p class="error">Can't reach the server: {error}</p>}
       {texts && texts.length === 0 && !adding && !generating && (
         <section class="empty card">
-          <p class="empty-glyph" lang="zh-CN" aria-hidden="true">读</p>
+          {lang().glyphs.library && <p class="empty-glyph" lang={tl()} aria-hidden="true">{lang().glyphs.library}</p>}
           <h2>Start with a short text</h2>
           <p class="muted">
-            Tap any word to hear it, see its tones and parts, and add it to your reviews. Words enter review only after
+            Tap any word to hear it, see {isPinyin() ? "its tones and parts" : "how it's said and its dictionary form"}, and add it to your reviews. Words enter review only after
             you've met them in a sentence.
           </p>
-          <button class="btn primary" disabled={busy} onClick={() => importText(STARTER.title, STARTER.body)}>
-            Open a starter text
-          </button>
+          {lang().starter && (
+            <button class="btn primary" disabled={busy} onClick={() => importText(lang().starter!.title, lang().starter!.body)}>
+              Open a starter text
+            </button>
+          )}
         </section>
       )}
 
@@ -93,7 +92,7 @@ export function Library() {
           {texts.map((t) => (
             <li key={t.id}>
               <a class="text-row card" href={`#/read/${t.id}`}>
-                <span class="text-title" lang="zh-CN">{t.title}</span>
+                <span class="text-title" lang={tl()}>{t.title}</span>
                 <span class="text-meta">
                   {t.coverage_at_creation != null && <span>{pct(t.coverage_at_creation)} known when added</span>}
                   {t.provenance !== "imported" && <span class="chip chip-quiet">{t.provenance}</span>}

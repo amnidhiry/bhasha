@@ -1,7 +1,9 @@
 // Speech: the homelab's speech service first (cached server-side, any voice you
-// chose after the tone check), the device's own Mandarin voice as the fallback.
+// chose after the tone check), the device's own voice for the language as the fallback.
 // After a server failure the device voice is used for a minute, so an offline
 // speech host never adds a delay to every tap.
+
+import { tl } from "./lang";
 
 let voice: SpeechSynthesisVoice | null | undefined;
 let serverDownUntil = 0;
@@ -9,10 +11,13 @@ let current: HTMLAudioElement | null = null;
 
 function pickVoice(): SpeechSynthesisVoice | null {
   const voices = speechSynthesis.getVoices();
+  const want = tl(); // "zh-CN", "bn-IN"
+  const base = want.split("-")[0];
+  const same = (v: SpeechSynthesisVoice) => v.lang.replace("_", "-") === want;
   return (
-    voices.find((v) => v.lang === "zh-CN" && /premium|enhanced/i.test(v.name)) ??
-    voices.find((v) => v.lang === "zh-CN") ??
-    voices.find((v) => v.lang.startsWith("zh")) ??
+    voices.find((v) => same(v) && /premium|enhanced/i.test(v.name)) ??
+    voices.find(same) ??
+    voices.find((v) => v.lang.startsWith(base)) ??
     null
   );
 }
@@ -24,7 +29,7 @@ function deviceSpeak(text: string, rate: number, onEnd?: () => void) {
   if (voice === undefined || voice === null) voice = pickVoice();
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  u.lang = "zh-CN";
+  u.lang = tl();
   u.rate = rate;
   if (voice) u.voice = voice;
   if (onEnd) u.onend = () => onEnd();

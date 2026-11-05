@@ -14,3 +14,13 @@ def current_user(db: Session = Depends(get_db)) -> AppUser:
     if user is None:
         raise HTTPException(500, "default user missing; run bootstrap")
     return user
+
+
+def current_language(user: AppUser = Depends(current_user)) -> str:
+    """The language being studied: the user's active language when its pack is installed."""
+    from app.packs import INSTALLED
+
+    lang = user.active_language or "zh"
+    if lang in INSTALLED:
+        return lang
+    return next(iter(INSTALLED), "zh")

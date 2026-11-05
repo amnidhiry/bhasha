@@ -317,7 +317,7 @@ def test_jellyfin_config_hidden_until_set(client):
 def test_jellyfin_search_subtitles_and_preview(client, jf):
     assert client.get("/api/import/config").json()["jellyfin"] is True
     found = client.get("/api/import/jellyfin/search", params={"q": "银行"}).json()
-    assert found[0] == {"id": "ep1", "name": "我的工作 S01E02 · 银行", "type": "Episode", "chinese_subtitles": 1}
+    assert found[0] == {"id": "ep1", "name": "我的工作 S01E02 · 银行", "type": "Episode", "target_subtitles": 1}
     assert found[1]["type"] == "Series" and found[2]["name"] == "电影 (2019)"
     assert client.get("/api/import/jellyfin/series/s1/episodes").json()[0]["id"] == "ep1"
 

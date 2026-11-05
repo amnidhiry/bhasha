@@ -1,3 +1,4 @@
+import { tl } from "../lang";
 import HanziWriter from "hanzi-writer";
 import { useEffect, useRef, useState } from "preact/hooks";
 import {
@@ -62,9 +63,9 @@ function Tile({ c, via }: { c: CharSummary; via?: string | null }) {
   return (
     <a class={`ch-tile ch-${c.status}`} href={charHref(c.character)}
       title={`${c.character} ${c.pinyin.join(", ")}: ${c.definition ?? ""}${opaque ? " (its parts mislead)" : ""}`}>
-      <span class="ch-glyph" lang="zh-CN">{c.character}</span>
+      <span class="ch-glyph" lang={tl()}>{c.character}</span>
       <span class="ch-py">{c.pinyin[0] ?? ""}</span>
-      {via && <span class="ch-via" lang="zh-CN">in {via}</span>}
+      {via && <span class="ch-via" lang={tl()}>in {via}</span>}
       {opaque && <span class="ch-dot" aria-label="parts mislead" />}
     </a>
   );
@@ -132,7 +133,7 @@ function WordList({ words }: { words: CharWord[] }) {
     <ul class="ch-words">
       {words.map((w) => (
         <li key={w.unit_id}>
-          <span class="ch-word" lang="zh-CN">{w.headword}</span>
+          <span class="ch-word" lang={tl()}>{w.headword}</span>
           <span class="muted">{w.reading_display}</span>
           <span class="ch-word-en">{w.meanings.join("; ")}</span>
           {w.status === "learning" && <span class="chip status-learning">learning</span>}
@@ -168,7 +169,7 @@ export function CharacterView({ char }: { char: string }) {
     <main class="page ch-page">
       {head}
       <section class="ch-hero">
-        {d.has_strokes ? <StrokeOrder char={d.character} /> : <span class="ch-hero-glyph" lang="zh-CN">{d.character}</span>}
+        {d.has_strokes ? <StrokeOrder char={d.character} /> : <span class="ch-hero-glyph" lang={tl()}>{d.character}</span>}
         <div class="ch-hero-body">
           <div class="ch-hero-reading">
             <Marked syllables={d.pinyin} />
@@ -192,21 +193,21 @@ export function CharacterView({ char }: { char: string }) {
 
       {d.parts.length > 0 && (
         <section class="card">
-          <h2>Parts <span class="muted ch-ids" lang="zh-CN">{d.decomposition}</span></h2>
+          <h2>Parts <span class="muted ch-ids" lang={tl()}>{d.decomposition}</span></h2>
           <ul class="ch-parts">
             {d.parts.map((p, i) => (
               <li key={i}>
                 <a class="ch-part" href={compHref(p.component)}>
-                  <span class="ch-part-glyph" lang="zh-CN">{p.component}</span>
+                  <span class="ch-part-glyph" lang={tl()}>{p.component}</span>
                   <span class="ch-part-body">
                     <span>
                       {p.gloss ?? <span class="muted">no meaning recorded</span>}
                       {p.pinyin.length > 0 && <span class="muted"> · {p.pinyin[0]}</span>}
                     </span>
                     <span class="muted small">
-                      {p.members.length > 1 && <span lang="zh-CN">{p.members.join(" ")} · </span>}
+                      {p.members.length > 1 && <span lang={tl()}>{p.members.join(" ")} · </span>}
                       {p.yours > 0 ? `in ${p.yours} of your characters` : "see characters with it"}
-                      {p.decomposition && <span lang="zh-CN"> · {p.decomposition}</span>}
+                      {p.decomposition && <span lang={tl()}> · {p.decomposition}</span>}
                     </span>
                   </span>
                   {p.role && <span class={`chip ${p.role === "sound" ? "chip-quiet" : ""}`}>{p.role}</span>}
@@ -216,8 +217,8 @@ export function CharacterView({ char }: { char: string }) {
           </ul>
           {d.radical && (
             <p class="muted small">
-              Radical <a href={compHref(d.radical)} lang="zh-CN" class="ch-inline">{d.radical}</a>
-              {d.radical_family && d.radical_family !== d.radical && <span lang="zh-CN"> ({d.radical_family})</span>}
+              Radical <a href={compHref(d.radical)} lang={tl()} class="ch-inline">{d.radical}</a>
+              {d.radical_family && d.radical_family !== d.radical && <span lang={tl()}> ({d.radical_family})</span>}
             </p>
           )}
         </section>
@@ -274,7 +275,7 @@ function ComponentView({ component }: { component: string }) {
       <header class="reader-head">
         <Back fallback="#/chars" />
         <div>
-          <h1 class="ch-comp-title" lang="zh-CN">{d ? d.family.members.join(" ") : component}</h1>
+          <h1 class="ch-comp-title" lang={tl()}>{d ? d.family.members.join(" ") : component}</h1>
           {d && (
             <p class="muted">
               {d.family.definition ?? "component"}
@@ -346,7 +347,7 @@ function Overview() {
         <h1>Characters</h1>
       </header>
       <form class="row-input ch-search" onSubmit={(e) => submit(e, "char")}>
-        <input type="text" lang="zh-CN" value={q} onInput={(e) => setQ(e.currentTarget.value)}
+        <input type="text" lang={tl()} value={q} onInput={(e) => setQ(e.currentTarget.value)}
           placeholder="A character or component, e.g. 氵" aria-label="Character or component" maxLength={4} />
         <button class="btn" type="submit" disabled={!q.trim()}>Open</button>
         <button class="btn quiet" type="button" disabled={!q.trim()} onClick={(e) => submit(e, "chars")}>Characters with it</button>
@@ -367,13 +368,13 @@ function Overview() {
                 {d.groups.map((g) => (
                   <li key={g.key}>
                     <a class="ch-group-head" href={compHref(g.members[0])}>
-                      <span class="ch-part-glyph" lang="zh-CN">{g.members[0]}</span>
+                      <span class="ch-part-glyph" lang={tl()}>{g.members[0]}</span>
                       <span class="ch-part-body">
                         <span>{g.definition ? g.definition.split(/[;,]/)[0] : "component"}</span>
                         <span class="muted small">{g.count} of yours ›</span>
                       </span>
                     </a>
-                    <span class="ch-group-chars" lang="zh-CN">
+                    <span class="ch-group-chars" lang={tl()}>
                       {g.characters.slice(0, 16).map((ch) => <a key={ch} href={charHref(ch)}>{ch}</a>)}
                       {g.characters.length > 16 && <span class="muted"> …</span>}
                     </span>
@@ -389,7 +390,7 @@ function Overview() {
             </section>
           ) : (
             <section class="card empty">
-              <p class="empty-glyph" lang="zh-CN">字</p>
+              <p class="empty-glyph" lang={tl()}>字</p>
               <p class="muted">Characters appear here once you add words to reviews or mark them known.
                 Try <a href={compHref("氵")}>氵 (water)</a> or <a href={compHref("口")}>口 (mouth)</a> to explore.</p>
             </section>

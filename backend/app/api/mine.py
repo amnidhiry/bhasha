@@ -11,7 +11,6 @@ from app.reader import now
 
 router = APIRouter(tags=["mining"])
 
-ALLOWED_FACETS = {"meaning", "reading", "listening", "tone", "production", "cloze"}
 
 
 class MineIn(BaseModel):
@@ -38,7 +37,7 @@ def mine(body: MineIn, db: Session = Depends(get_db), user: AppUser = Depends(cu
         if text is None or text.user_id != user.id:
             raise HTTPException(404, "text not found")
     facets = body.facets or list(get_pack(unit.language).default_facets)
-    bad = set(facets) - ALLOWED_FACETS
+    bad = {f for f in facets if f not in get_pack(unit.language).facets}
     if bad:
         raise HTTPException(400, f"unknown facets: {sorted(bad)}")
     created = []
