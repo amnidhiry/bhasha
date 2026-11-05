@@ -5,7 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import llm, lookup, mine, progress, reviews, texts
+from app.api import jobs, llm, lookup, mine, progress, reviews, texts
 from app.bootstrap import ensure_defaults, warm_packs
 from app.config import get_settings
 from app.db import SessionLocal
@@ -21,7 +21,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="bhasha", version="0.1.0", lifespan=lifespan, docs_url="/api/docs",
               openapi_url="/api/openapi.json")
-for r in (reviews.router, texts.router, lookup.router, mine.router, progress.router, llm.router):
+for r in (reviews.router, texts.router, lookup.router, mine.router, progress.router, llm.router, jobs.router):
     app.include_router(r, prefix="/api")
 
 

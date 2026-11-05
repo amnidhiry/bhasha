@@ -12,15 +12,22 @@ def _secret_key(monkeypatch):
     monkeypatch.setattr(get_settings(), "secret_key", "test-secret-key")
 
 
+# Run the suite on Postgres with e.g.
+#   BHASHA_TEST_DATABASE_URL="postgresql+psycopg://bhasha@/bhasha_test?host=/run/postgresql"
+TEST_DB = os.environ.get("BHASHA_TEST_DATABASE_URL")
+
+
 @pytest.fixture()
 def client(tmp_path, monkeypatch):
-    url = f"sqlite:///{tmp_path / 'test.db'}"
+    url = TEST_DB or f"sqlite:///{tmp_path / 'test.db'}"
     from app import db as dbmod
     from app.db import Base, make_engine
     from sqlalchemy.orm import sessionmaker
     import app.models  # noqa: F401  (register tables)
 
     engine = make_engine(url)
+    if TEST_DB:
+        Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine, expire_on_commit=False)
     monkeypatch.setattr(dbmod, "SessionLocal", Session)
@@ -52,3 +59,4 @@ def client(tmp_path, monkeypatch):
         yield c
     main.app.dependency_overrides.clear()
     get_pack.cache_clear()
+    engine.dispose()

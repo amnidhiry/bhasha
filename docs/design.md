@@ -317,7 +317,7 @@ One FastAPI backend owns the learner model and all language logic; clients are t
   (installed on iPhone, iPad, Mac) ───────┘
                                   │   ├──> Language pack (zh: jieba, pypinyin, CC-CEDICT, MMAH)
                                   │   └──> LLM gateway (ChatGPT plan / LM Studio / API key)
-                                  └──> Worker (Redis) ──> Speech (CosyVoice, FunASR, pYIN)
+                                  └──> Worker (job table in Postgres) ──> Speech (CosyVoice, FunASR, pYIN)
 ```
 
 Clients talk only to the API; the API calls a language pack for anything language-specific and the gateway for any model call.
@@ -328,7 +328,7 @@ Clients talk only to the API; the API calls a language pack for anything languag
 |---|---|---|
 | API | Auth, learner model, review sync, reader and generation endpoints | FastAPI, SQLAlchemy, Alembic |
 | Database | All user and content state | Postgres (one instance; SQLite allowed for a single-user dev setup) |
-| Worker | Generation jobs, imports, audio rendering, batch enrichment, nightly FSRS re-fit | Arq or Celery on Redis |
+| Worker | Generation jobs, imports, audio rendering, batch enrichment, nightly FSRS re-fit | A `job` table in Postgres claimed with `SELECT … FOR UPDATE SKIP LOCKED`, run by `python -m app.worker` from the API image. At a few jobs a day, this replaces Redis: one service fewer, and queued work survives restarts |
 | Language pack: zh | Segmentation, pinyin and sandhi, dictionary, decomposition, HSK levels | jieba, pypinyin + g2pM, CC-CEDICT, Make Me a Hanzi |
 | Speech | TTS for texts and cards; ASR and pitch tracking for speaking and tone feedback | CosyVoice, FunASR or Whisper, pYIN; GPU optional, CPU fallback for ASR |
 | LLM gateway | One interface for every model call, with token refresh, usage logging and a daily call cap | Sign in with ChatGPT (plan usage, Responses API) first; any OpenAI-compatible endpoint (LM Studio, or an API key) as an alternative |
@@ -393,7 +393,7 @@ There are no native apps. The PWA installs to the Home Screen on iPhone and iPad
 
 ### Deployment
 
-Docker Compose with api, worker, postgres, redis and speech containers, behind your existing Traefik reverse proxy, with the repo on your Forgejo. The speech container can live on whichever host has a GPU; if none, run ASR on CPU and render TTS in the background so audio is ready before you study. Nightly Postgres dumps cover backups; the review log is the irreplaceable part.
+Docker Compose with api, worker, postgres and (later) speech containers, behind your existing Traefik reverse proxy, with the repo on your Forgejo. The speech container can live on whichever host has a GPU; if none, run ASR on CPU and render TTS in the background so audio is ready before you study. Nightly Postgres dumps cover backups; the review log is the irreplaceable part.
 
 ## Roadmap
 

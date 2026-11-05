@@ -16,7 +16,7 @@ const LENGTHS = [
   { id: "long", label: "Long" },
 ] as const;
 
-export function GenerateForm({ onCancel }: { onCancel: () => void }) {
+export function GenerateForm({ onCancel, onQueued }: { onCancel: () => void; onQueued: () => void }) {
   const [topic, setTopic] = useState("");
   const [genre, setGenre] = useState<string>("story");
   const [length, setLength] = useState<string>("short");
@@ -27,11 +27,12 @@ export function GenerateForm({ onCancel }: { onCancel: () => void }) {
     e.preventDefault();
     setBusy(true);
     try {
-      const doc = await api.generate({
+      await api.generate({
         topic, genre, length,
         targets: targets.split(/[\s,，、]+/).filter(Boolean).slice(0, 5),
       });
-      go(`#/read/${doc.id}`);
+      toast("Writing your text. Keep reading or reviewing; it'll show up here.");
+      onQueued();
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         toast("Connect a model first: Progress → Text generation");
@@ -74,10 +75,10 @@ export function GenerateForm({ onCancel }: { onCancel: () => void }) {
         <input lang="zh-CN" value={targets} onInput={(e) => setTargets(e.currentTarget.value)} placeholder="银行 医生" />
       </label>
       <div class="form-foot">
-        <span class="muted">{busy ? "Writing and checking it against your words… usually under a minute." : "Written at your level, then checked word by word."}</span>
+        <span class="muted">Written at your level, then checked word by word. Takes about a minute in the background.</span>
         <span class="row tight">
           <button type="button" class="btn quiet" onClick={onCancel} disabled={busy}>Cancel</button>
-          <button class="btn primary" disabled={busy}>{busy ? "Writing…" : "Write it"}</button>
+          <button class="btn primary" disabled={busy}>{busy ? "Queuing…" : "Write it"}</button>
         </span>
       </div>
     </form>

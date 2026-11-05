@@ -363,3 +363,18 @@ details.sub summary { font-weight: 550; color: var(--ink-2); font-size: 0.9rem; 
 .q-zh { font: 1.2rem/1.7 var(--serif-zh); margin: 0; }
 .questions details summary { font-size: 0.85rem; color: var(--ink-2); cursor: pointer; }
 .questions details p { margin: 4px 0; }
+
+/* Background jobs */
+.jobs { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+.job { display: flex; align-items: center; gap: 12px; margin: 0; padding: 12px 14px; }
+.job-body { display: grid; gap: 2px; flex: 1; min-width: 0; text-decoration: none; }
+.job-body b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.job .btn { min-height: 36px; padding: 0 12px; }
+.spinner {
+  width: 18px; height: 18px; flex: none; border-radius: 50%;
+  border: 2px solid var(--rule); border-top-color: var(--accent); animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+.job-dot { width: 10px; height: 10px; flex: none; border-radius: 50%; background: var(--ok); }
+.job-dot.failed { background: var(--accent); }

@@ -1,5 +1,5 @@
-# Phase 0: api + postgres. The worker (arq on redis) and speech services arrive
-# in phase 1 with the generator and TTS; see docs/design.md "Architecture".
+# api + worker + postgres. The worker runs queued jobs (text generation) from a
+# Postgres table; the speech service arrives with TTS. See docs/design.md "Architecture".
 name: bhasha
 
 services:
@@ -28,6 +28,24 @@ services:
       - traefik.http.routers.bhasha.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.bhasha.tls=true
       - traefik.http.services.bhasha.loadbalancer.server.port=8000
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    command: ["python", "-m", "app.worker"]
+    environment:
+      BHASHA_DATABASE_URL: postgresql+psycopg://bhasha:${POSTGRES_PASSWORD:?set in .env}@db:5432/bhasha
+      BHASHA_TIMEZONE: ${BHASHA_TIMEZONE:-UTC}
+      BHASHA_SECRET_KEY: ${BHASHA_SECRET_KEY:-}
+      BHASHA_LLM_MAX_CALLS_PER_DAY: ${BHASHA_LLM_MAX_CALLS_PER_DAY:-300}
+    depends_on:
+      api:
+        condition: service_healthy   # the api runs the migrations first
+    healthcheck:
+      disable: true
+    stop_grace_period: 90s          # lets a running generation finish
 
   db:
     image: postgres:16-alpine

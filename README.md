@@ -8,6 +8,10 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 
 ### Phase 1 PWA (in progress)
 
+- [x] Background worker: generation is queued as a job (a Postgres table with `SKIP LOCKED`, no Redis) and run by
+      the `worker` container. The library shows progress and "Ready" when done, plus Retry for failures.
+      Jobs survive restarts, and a job orphaned by a crashed worker is requeued after 15 minutes
+
 - [x] Graded-reader generator: "Write me a text" with topic, kind (story, dialogue, everyday, news), length
       and words to practise. Every word is checked against what you know plus an HSK level pool, with up to
       two rewrites naming the exact words to replace. The reader adds English per sentence, a flag-as-unnatural
@@ -47,7 +51,7 @@ Mandarin is the first language pack. The full design is in [`docs/design.md`](do
 - [x] Mining requires a context sentence or text; placement bulk-marking by HSK level
 - [x] Progress: known words and characters, cumulative HSK coverage, characters read
 
-Next: the arq worker (so generation runs in the background), the handwriting track (Hanzi Writer with Apple
+Next: the handwriting track (Hanzi Writer with Apple
 Pencil), the nightly FSRS optimizer, then SUBTLEX-CH and Tatoeba imports, g2pM for polyphones, and the sound bootcamp.
 
 ## Run it
@@ -86,7 +90,14 @@ context. Over plain `http://<lan-ip>:8000` the app still works, but only online.
 cd backend && python -m venv .venv && . .venv/bin/activate && pip install -e '.[dev]' && pytest
 ```
 
-Without `BHASHA_DATABASE_URL` the API uses SQLite (`bhasha.db`). Run `alembic upgrade head` first.
+Without `BHASHA_DATABASE_URL` the API uses SQLite (`bhasha.db`). Run `alembic upgrade head` first. Either run
+`python -m app.worker` alongside the API, or set `BHASHA_INLINE_JOBS=true` to run jobs inside the API process.
+
+The tests use SQLite by default. To run them on Postgres, which also covers the concurrent-claim test:
+
+```bash
+BHASHA_TEST_DATABASE_URL="postgresql+psycopg://bhasha@/bhasha_test?host=/run/postgresql" pytest
+```
 
 ```bash
 cd web && npm install && npm run dev   # http://localhost:5173, proxies /api to :8000

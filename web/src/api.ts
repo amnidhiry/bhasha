@@ -47,6 +47,17 @@ export interface LlmStatus {
   secret_key_set: boolean;
 }
 
+export interface Job {
+  id: number;
+  kind: string;
+  status: "queued" | "running" | "done" | "failed";
+  params: { topic?: string; genre?: string; length?: string; targets?: string[] };
+  result: { text_id?: number; title?: string };
+  error: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
+
 export interface TextDoc {
   id: number;
   title: string;
@@ -169,7 +180,10 @@ export const api = {
   texts: () => req<TextSummary[]>("/texts"),
   text: (id: number) => req<TextDoc>(`/texts/${id}`),
   importText: (title: string, body: string) => post<TextDoc>("/texts/import", { title, body }),
-  generate: (b: { topic: string; genre: string; length: string; targets: string[] }) => post<TextDoc>("/texts/generate", b),
+  generate: (b: { topic: string; genre: string; length: string; targets: string[] }) => post<Job>("/jobs/generate", b),
+  jobs: () => req<Job[]>("/jobs"),
+  jobSeen: (id: number) => post<Job>(`/jobs/${id}/seen`, {}),
+  jobRetry: (id: number) => post<Job>(`/jobs/${id}/retry`, {}),
   flag: (id: number, sentence: number, note = "") => post<{ flags: unknown[] }>(`/texts/${id}/flag`, { sentence, note }),
   llmStatus: () => req<LlmStatus>("/llm/status"),
   chatgptStart: () => post<{ flow_id: string; authorize_url: string; redirect_uri: string }>("/llm/chatgpt/start", {}),

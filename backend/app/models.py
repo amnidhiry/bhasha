@@ -241,3 +241,23 @@ class LlmConnection(Base):
     account_email: Mapped[str | None] = mapped_column(String(256))
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Job(Base):
+    """Background work (text generation now; imports, audio and the nightly FSRS
+    re-fit later). Claimed by the worker with SELECT ... FOR UPDATE SKIP LOCKED."""
+
+    __tablename__ = "job"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16), default="queued")  # queued | running | done | failed
+    params: Mapped[dict] = mapped_column(JSONType, default=dict)
+    result: Mapped[dict] = mapped_column(JSONType, default=dict)
+    error: Mapped[str | None] = mapped_column(SAText)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    seen: Mapped[bool] = mapped_column(Boolean, default=False)  # the user saw the outcome
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (Index("ix_job_status_created", "status", "created_at"),)

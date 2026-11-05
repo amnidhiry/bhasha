@@ -2,6 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import { api, type TextSummary } from "../api";
 import { go } from "../router";
 import { GenerateForm } from "../components/GenerateForm";
+import { JobList } from "../components/JobList";
 import { toast } from "../components/Toast";
 import { pct } from "../format";
 
@@ -15,13 +16,13 @@ export function Library() {
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [jobsKey, setJobsKey] = useState(0);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    api.texts().then(setTexts).catch((e) => setError(e.message));
-  }, []);
+  const loadTexts = () => api.texts().then(setTexts).catch((e) => setError(e.message));
+  useEffect(() => void loadTexts(), []);
 
   async function importText(t: string, b: string) {
     setBusy(true);
@@ -67,7 +68,11 @@ export function Library() {
         </form>
       )}
 
-      {generating && <GenerateForm onCancel={() => setGenerating(false)} />}
+      {generating && (
+        <GenerateForm onCancel={() => setGenerating(false)}
+          onQueued={() => { setGenerating(false); setJobsKey((k) => k + 1); }} />
+      )}
+      <JobList refreshKey={jobsKey} onDone={() => void loadTexts()} />
 
       {error && <p class="error">Can't reach the server: {error}</p>}
       {texts && texts.length === 0 && !adding && !generating && (

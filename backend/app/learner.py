@@ -29,9 +29,13 @@ def scheduler(desired_retention: float | None = None, fuzz: bool = True) -> Sche
 
 
 def _aware(dt: datetime | None) -> datetime | None:
-    if dt is not None and dt.tzinfo is None:
+    """UTC-aware datetimes for py-fsrs, which rejects any other zone. SQLite hands
+    back naive values; Postgres hands back the session's time zone."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
-    return dt
+    return dt.astimezone(timezone.utc)
 
 
 def to_fsrs(card: Card) -> FsrsCard:
