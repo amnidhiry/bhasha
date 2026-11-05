@@ -38,6 +38,13 @@ class Settings(BaseSettings):
     audio_cache_dir: str = "/srv/audio"
     # Run queued jobs inside the API process (dev without a worker container).
     inline_jobs: bool = False
+    # Importer: link imports refuse private, loopback and link-local addresses
+    # (SSRF) unless the host is listed here: names, IPs or CIDRs, comma-separated,
+    # e.g. "wiki.lan,192.168.1.0/24" for content on the homelab LAN.
+    import_allow_hosts: str = ""
+    # Self-hosted Jellyfin for subtitle import (Dashboard → API Keys).
+    jellyfin_url: str = ""
+    jellyfin_api_key: str = ""
     chatgpt_auth_url: str = "https://auth.openai.com"
     chatgpt_api_url: str = "https://api.openai.com/v1"
 

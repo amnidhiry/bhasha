@@ -17,6 +17,10 @@ services:
       BHASHA_SPEECH_URLS: ${BHASHA_SPEECH_URLS:-http://speech:8790}
       BHASHA_SPEECH_TOKEN: ${BHASHA_SPEECH_TOKEN:?set in .env}
       BHASHA_AUDIO_CACHE_DIR: /srv/audio
+      # Importer: hosts on your LAN that links may point to, and your Jellyfin for subtitles.
+      BHASHA_IMPORT_ALLOW_HOSTS: ${BHASHA_IMPORT_ALLOW_HOSTS:-}
+      BHASHA_JELLYFIN_URL: ${BHASHA_JELLYFIN_URL:-}
+      BHASHA_JELLYFIN_API_KEY: ${BHASHA_JELLYFIN_API_KEY:-}
     volumes:
       - ./data:/data:ro           # source datasets for the importers
       - audio:/srv/audio          # synthesized speech cache

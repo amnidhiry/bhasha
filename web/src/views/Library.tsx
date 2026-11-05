@@ -2,6 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 import { api, type TextSummary } from "../api";
 import { go } from "../router";
 import { GenerateForm } from "../components/GenerateForm";
+import { ImportPanel } from "../components/ImportPanel";
 import { JobList } from "../components/JobList";
 import { toast } from "../components/Toast";
 import { pct } from "../format";
@@ -17,8 +18,6 @@ export function Library() {
   const [adding, setAdding] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [jobsKey, setJobsKey] = useState(0);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
 
   const loadTexts = () => api.texts().then(setTexts).catch((e) => setError(e.message));
@@ -54,7 +53,7 @@ export function Library() {
         <h1>Read</h1>
         <span class="row tight">
           <button class="btn" onClick={() => { setAdding((a) => !a); setGenerating(false); }} aria-expanded={adding}>
-            {adding ? "Cancel" : "Paste"}
+            {adding ? "Cancel" : "Import"}
           </button>
           <button class="btn" disabled={busy} onClick={realSentences}
             title="Real sentences by people (Tatoeba), with at most one new word each">
@@ -66,23 +65,7 @@ export function Library() {
         </span>
       </header>
 
-      {adding && (
-        <form class="card form" onSubmit={(e) => { e.preventDefault(); if (body.trim()) void importText(title, body); }}>
-          <label>
-            <span>Title</span>
-            <input value={title} onInput={(e) => setTitle(e.currentTarget.value)} placeholder="Optional" />
-          </label>
-          <label>
-            <span>Chinese text</span>
-            <textarea lang="zh-CN" rows={7} value={body} onInput={(e) => setBody(e.currentTarget.value)}
-              placeholder="Paste an article, dialogue or subtitles…" required />
-          </label>
-          <div class="form-foot">
-            <span class="muted">You'll see how much of it you already know before you start.</span>
-            <button class="btn primary" disabled={busy || !body.trim()}>{busy ? "Reading…" : "Add"}</button>
-          </div>
-        </form>
-      )}
+      {adding && <ImportPanel onCancel={() => setAdding(false)} />}
 
       {generating && (
         <GenerateForm onCancel={() => setGenerating(false)}
